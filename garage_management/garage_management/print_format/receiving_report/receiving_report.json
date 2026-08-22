@@ -1,0 +1,23 @@
+{
+ "creation": "2026-08-05 10:00:00.000000",
+ "css": ".garage-print { font-family: sans-serif; } .garage-print h2 { margin-bottom: 4px; } .garage-print table { width: 100%; border-collapse: collapse; margin-top: 12px; } .garage-print td, .garage-print th { border: 1px solid #ddd; padding: 6px 8px; text-align: left; } .muted { color: #666; }",
+ "default_print_language": "en",
+ "disabled": 0,
+ "doc_type": "Service Request",
+ "docstatus": 0,
+ "doctype": "Print Format",
+ "font_size": 12,
+ "html": "<div class=\"garage-print\">\n<h2>Receiving Report</h2>\n<p class=\"muted\">{{ doc.name }} &middot; {{ frappe.utils.format_datetime(doc.received_date) }}</p>\n<table>\n<tr><th>Customer</th><td>{{ doc.customer_name }}</td><th>Mobile</th><td>{{ doc.mobile_no or \"\" }}</td></tr>\n<tr><th>Priority</th><td>{{ doc.priority }}</td><th>Complaint</th><td>{{ doc.complaint or \"\" }}</td></tr>\n<tr><th>Engine / Vehicle</th><td colspan=\"3\">{{ doc.engine_vehicle_notes or \"\" }}</td></tr>\n</table>\n{% if doc.components %}\n<h3>Customer Owned Parts</h3>\n<table>\n<tr><th>Repair Asset</th><th>Serial</th><th>Make / Type</th><th>Part No</th></tr>\n{% for row in doc.components %}\n<tr><td>{{ row.repair_asset }}</td><td>{{ row.serial_number or \"\" }}</td><td>{{ row.make_type or \"\" }}</td><td>{{ row.part_no or \"\" }}</td></tr>\n{% endfor %}\n</table>\n{% endif %}\n<p style=\"margin-top:16px\">Received in good order subject to inspection.</p>\n<p>Customer Sign: ________________ &nbsp;&nbsp; Staff Sign: ________________</p>\n</div>",
+ "idx": 0,
+ "modified": "2026-08-16 22:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Garage Management",
+ "name": "Receiving Report",
+ "owner": "Administrator",
+ "print_format_builder": 0,
+ "print_format_builder_beta": 0,
+ "print_format_type": "Jinja",
+ "raw_printing": 0,
+ "show_section_headings": 0,
+ "standard": "Yes"
+}

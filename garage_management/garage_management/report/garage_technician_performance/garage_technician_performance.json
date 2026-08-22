@@ -1,0 +1,44 @@
+{
+ "absolute_value": 0,
+ "add_total_row": 0,
+ "columns": [],
+ "creation": "2026-08-05 10:00:00.000000",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "label": "From Date",
+   "mandatory": 0,
+   "wildcard_filter": 0
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "To Date",
+   "mandatory": 0,
+   "wildcard_filter": 0
+  }
+ ],
+ "idx": 0,
+ "is_standard": "Yes",
+ "modified": "2026-08-05 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Garage Management",
+ "name": "Garage Technician Performance",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "ref_doctype": "Repair Job",
+ "report_name": "Garage Technician Performance",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "Garage Manager"
+  },
+  {
+   "role": "System Manager"
+  }
+ ]
+}

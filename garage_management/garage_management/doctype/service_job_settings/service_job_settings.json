@@ -1,0 +1,119 @@
+{
+ "actions": [],
+ "creation": "2026-08-05 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "company",
+  "default_warehouse",
+  "column_break_1",
+  "default_price_list",
+  "default_taxes_and_charges",
+  "overdue_quote_days",
+  "warranty_section",
+  "default_warranty_days",
+  "notifications_section",
+  "notify_on_status_change",
+  "notification_recipients"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "default_warehouse",
+   "fieldtype": "Link",
+   "label": "Default Selling Warehouse",
+   "options": "Warehouse",
+   "description": "Used for Sales Invoice update_stock on spare parts"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "default_price_list",
+   "fieldtype": "Link",
+   "label": "Default Price List",
+   "options": "Price List"
+  },
+  {
+   "fieldname": "default_taxes_and_charges",
+   "fieldtype": "Link",
+   "label": "Default Taxes and Charges",
+   "options": "Sales Taxes and Charges Template"
+  },
+  {
+   "default": "3",
+   "fieldname": "overdue_quote_days",
+   "fieldtype": "Int",
+   "label": "Overdue Quote Days",
+   "description": "Quotes older than this many days show on the Overdue KPI"
+  },
+  {
+   "fieldname": "warranty_section",
+   "fieldtype": "Section Break",
+   "label": "Warranty"
+  },
+  {
+   "default": "30",
+   "fieldname": "default_warranty_days",
+   "fieldtype": "Int",
+   "label": "Default Warranty Days"
+  },
+  {
+   "fieldname": "notifications_section",
+   "fieldtype": "Section Break",
+   "label": "Notifications"
+  },
+  {
+   "default": "0",
+   "fieldname": "notify_on_status_change",
+   "fieldtype": "Check",
+   "label": "Email on Status Change"
+  },
+  {
+   "depends_on": "eval:doc.notify_on_status_change",
+   "description": "Comma-separated emails; leave blank to notify assigned technician only",
+   "fieldname": "notification_recipients",
+   "fieldtype": "Small Text",
+   "label": "Notification Recipients"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-08-05 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Garage Management",
+ "name": "Service Job Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Garage Manager",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Garage Front Desk"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

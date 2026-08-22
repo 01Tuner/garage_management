@@ -1,0 +1,213 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "autoname": "naming_series:",
+ "creation": "2026-08-16 22:00:00.000000",
+ "default_print_format": "Inspection Report",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "service_request",
+  "status",
+  "column_break_header",
+  "assigned_to",
+  "company",
+  "customer_section",
+  "customer",
+  "customer_name",
+  "part_section",
+  "part_results",
+  "findings_section",
+  "findings",
+  "key_replacement_items",
+  "inspection_notes",
+  "recommended_work"
+ ],
+ "fields": [
+  {
+   "default": "INSP-.YYYY.-.####",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "no_copy": 1,
+   "options": "INSP-.YYYY.-.####",
+   "reqd": 1,
+   "set_only_once": 1
+  },
+  {
+   "fieldname": "service_request",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Service Request",
+   "options": "Service Request",
+   "reqd": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nIn Progress\nCompleted\nCancelled",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_header",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "assigned_to",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Assigned To",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "service_request.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
+  },
+  {
+   "fieldname": "customer_section",
+   "fieldtype": "Section Break",
+   "label": "Customer"
+  },
+  {
+   "fetch_from": "service_request.customer",
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Customer",
+   "options": "Customer",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "service_request.customer_name",
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Customer Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "part_section",
+   "fieldtype": "Section Break",
+   "label": "Part Inspection"
+  },
+  {
+   "fieldname": "part_results",
+   "fieldtype": "Table",
+   "label": "Part Results",
+   "options": "Inspection Part Result"
+  },
+  {
+   "fieldname": "findings_section",
+   "fieldtype": "Section Break",
+   "label": "Findings"
+  },
+  {
+   "fieldname": "findings",
+   "fieldtype": "Table MultiSelect",
+   "label": "Findings",
+   "options": "Inspection Finding Item"
+  },
+  {
+   "fieldname": "key_replacement_items",
+   "fieldtype": "Table MultiSelect",
+   "label": "Key Replacement Items",
+   "options": "Inspection Key Replacement Item"
+  },
+  {
+   "fieldname": "inspection_notes",
+   "fieldtype": "Text Editor",
+   "label": "Inspection Notes"
+  },
+  {
+   "fieldname": "recommended_work",
+   "fieldtype": "Text Editor",
+   "label": "Recommended Work"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-08-16 22:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Garage Management",
+ "name": "Inspection",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Garage Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Garage Front Desk"
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Garage Technician",
+   "write": 1
+  }
+ ],
+ "search_fields": "service_request,customer_name,status,assigned_to",
+ "show_title_field_in_link": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [
+  {
+   "color": "Gray",
+   "title": "Draft"
+  },
+  {
+   "color": "Cyan",
+   "title": "In Progress"
+  },
+  {
+   "color": "Green",
+   "title": "Completed"
+  },
+  {
+   "color": "Red",
+   "title": "Cancelled"
+  }
+ ],
+ "title_field": "customer_name",
+ "track_changes": 1
+}

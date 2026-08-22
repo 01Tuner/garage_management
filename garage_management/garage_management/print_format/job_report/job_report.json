@@ -1,0 +1,23 @@
+{
+ "creation": "2026-08-17 00:20:00.000000",
+ "css": ".garage-print { font-family: sans-serif; } .garage-print h2 { margin-bottom: 4px; } .garage-print h3 { margin-top: 18px; } .garage-print table { width: 100%; border-collapse: collapse; margin-top: 12px; } .garage-print td, .garage-print th { border: 1px solid #ddd; padding: 6px 8px; text-align: left; } .muted { color: #666; }",
+ "default_print_language": "en",
+ "disabled": 0,
+ "doc_type": "Service Request",
+ "docstatus": 0,
+ "doctype": "Print Format",
+ "font_size": 12,
+ "html": "<div class=\"garage-print\">\n<h2>Job Report</h2>\n<p class=\"muted\">{{ doc.name }} &middot; {{ doc.status }} &middot; {{ frappe.utils.format_datetime(doc.received_date) }}</p>\n<table>\n<tr><th>Customer</th><td>{{ doc.customer_name }}</td><th>Mobile</th><td>{{ doc.mobile_no or \"\" }}</td></tr>\n<tr><th>Priority</th><td>{{ doc.priority }}</td><th>Job Type</th><td>{{ doc.job_type or \"\" }}</td></tr>\n<tr><th>Complaint</th><td colspan=\"3\">{{ doc.complaint or \"\" }}</td></tr>\n<tr><th>Engine / Vehicle</th><td colspan=\"3\">{{ doc.engine_vehicle_notes or \"\" }}</td></tr>\n<tr><th>Warranty</th><td colspan=\"3\">{{ doc.warranty_days or 0 }} days{% if doc.warranty_expiry %} (until {{ frappe.utils.formatdate(doc.warranty_expiry) }}){% endif %}</td></tr>\n</table>\n{% if doc.components %}\n<h3>Customer Owned Parts</h3>\n<table>\n<tr><th>Repair Asset</th><th>Serial</th><th>Make / Type</th><th>Part No</th></tr>\n{% for row in doc.components %}\n<tr><td>{{ row.repair_asset }}</td><td>{{ row.serial_number or \"\" }}</td><td>{{ row.make_type or \"\" }}</td><td>{{ row.part_no or \"\" }}</td></tr>\n{% endfor %}\n</table>\n{% endif %}\n{% set inspections = frappe.get_all(\"Inspection\", filters={\"service_request\": doc.name}, pluck=\"name\", order_by=\"creation\") %}\n<h3>Inspections</h3>\n{% if inspections %}\n{% for insp_name in inspections %}\n{% set insp = frappe.get_doc(\"Inspection\", insp_name) %}\n<p><b>{{ insp.name }}</b> &middot; {{ insp.status }} &middot; {{ insp.assigned_to or \"\" }}</p>\n{% if insp.part_results %}\n<table>\n<tr><th>Asset</th><th>Serial</th><th>Condition</th><th>Test Bench</th></tr>\n{% for row in insp.part_results %}\n<tr><td>{{ row.repair_asset }}</td><td>{{ row.serial_number or \"\" }}</td><td>{{ row.condition or \"\" }}</td><td>{{ row.test_bench_results or \"\" }}</td></tr>\n{% endfor %}\n</table>\n{% endif %}\n{% if insp.findings %}\n<p>Findings: {% for row in insp.findings %}{{ row.inspection_finding }}{% if not loop.last %}, {% endif %}{% endfor %}</p>\n{% endif %}\n{% if insp.key_replacement_items %}\n<p>Key Replacement Items: {% for row in insp.key_replacement_items %}{{ row.item_code }}{% if not loop.last %}, {% endif %}{% endfor %}</p>\n{% endif %}\n<div>{{ insp.inspection_notes or \"\" }}</div>\n<div>{{ insp.recommended_work or \"\" }}</div>\n{% endfor %}\n{% else %}\n<p class=\"muted\">No inspections yet.</p>\n{% endif %}\n{% set repair_jobs = frappe.get_all(\"Repair Job\", filters={\"service_request\": doc.name}, pluck=\"name\", order_by=\"creation\") %}\n<h3>Repair Jobs</h3>\n{% if repair_jobs %}\n<table>\n<tr><th>Repair Job</th><th>Status</th><th>Assigned To</th><th>Job Type</th></tr>\n{% for rj_name in repair_jobs %}\n{% set rj = frappe.get_doc(\"Repair Job\", rj_name) %}\n<tr><td>{{ rj.name }}</td><td>{{ rj.status }}</td><td>{{ rj.assigned_to or \"\" }}</td><td>{{ rj.job_type or \"\" }}</td></tr>\n{% endfor %}\n</table>\n{% else %}\n<p class=\"muted\">No repair jobs yet.</p>\n{% endif %}\n{% if doc.billing_items %}\n<h3>Services &amp; Parts</h3>\n<table>\n<tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>\n{% for row in doc.billing_items %}\n<tr><td>{{ row.item_name or row.item_code }}</td><td>{{ row.qty }}</td><td>{{ row.rate }}</td><td>{{ row.amount }}</td></tr>\n{% endfor %}\n<tr><th colspan=\"3\">Total</th><th>{{ doc.billing_total }}</th></tr>\n</table>\n{% endif %}\n<h3>Commercial</h3>\n<table>\n<tr><th>Quotation</th><td>{{ doc.quotation or \"\" }}</td></tr>\n<tr><th>Sales Order</th><td>{{ doc.sales_order or \"\" }}</td></tr>\n<tr><th>Sales Invoice</th><td>{{ doc.sales_invoice or \"\" }}</td></tr>\n</table>\n</div>",
+ "idx": 0,
+ "modified": "2026-08-17 00:20:00.000000",
+ "modified_by": "Administrator",
+ "module": "Garage Management",
+ "name": "Job Report",
+ "owner": "Administrator",
+ "print_format_builder": 0,
+ "print_format_builder_beta": 0,
+ "print_format_type": "Jinja",
+ "raw_printing": 0,
+ "show_section_headings": 0,
+ "standard": "Yes"
+}

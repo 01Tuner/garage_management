@@ -1,0 +1,23 @@
+{
+ "creation": "2026-08-05 10:00:00.000000",
+ "css": ".garage-print { font-family: sans-serif; } .garage-print table { width: 100%; border-collapse: collapse; margin-top: 12px; } .garage-print td, .garage-print th { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }",
+ "default_print_language": "en",
+ "disabled": 0,
+ "doc_type": "Repair Job",
+ "docstatus": 0,
+ "doctype": "Print Format",
+ "font_size": 12,
+ "html": "<div class=\"garage-print\">\n{% set sr = frappe.get_doc(\"Service Request\", doc.service_request) if doc.service_request else None %}\n<h2>Service Report</h2>\n<p>{{ doc.name }} &middot; {{ doc.customer_name }}</p>\n<table>\n<tr><th>Service Request</th><td>{{ doc.service_request }}</td><th>Status</th><td>{{ doc.status }}</td></tr>\n<tr><th>Job Type</th><td>{{ doc.job_type or \"\" }}</td><th>Assigned To</th><td>{{ doc.assigned_to or \"\" }}</td></tr>\n{% if sr %}\n<tr><th>Warranty</th><td colspan=\"3\">{{ sr.warranty_days or 0 }} days{% if sr.warranty_expiry %} (until {{ frappe.utils.formatdate(sr.warranty_expiry) }}){% endif %}</td></tr>\n{% endif %}\n</table>\n{% if sr and sr.components %}\n<h3>Components</h3>\n<table>\n<tr><th>Asset</th><th>Serial</th><th>Part No</th></tr>\n{% for row in sr.components %}\n<tr><td>{{ row.repair_asset }}</td><td>{{ row.serial_number or \"\" }}</td><td>{{ row.part_no or \"\" }}</td></tr>\n{% endfor %}\n</table>\n{% endif %}\n<div>{{ doc.work_notes or \"\" }}</div>\n{% if doc.qc_items %}\n<h3>QC Checklist</h3>\n<table>\n<tr><th>Test</th><th>Result</th><th>Notes</th></tr>\n{% for row in doc.qc_items %}\n<tr><td>{{ row.test_name }}</td><td>{{ row.result }}</td><td>{{ row.notes or \"\" }}</td></tr>\n{% endfor %}\n</table>\n{% endif %}\n{% if sr and sr.billing_items %}\n<h3>Services &amp; Parts</h3>\n<table>\n<tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>\n{% for row in sr.billing_items %}\n<tr><td>{{ row.item_name or row.item_code }}</td><td>{{ row.qty }}</td><td>{{ row.rate }}</td><td>{{ row.amount }}</td></tr>\n{% endfor %}\n<tr><th colspan=\"3\">Total</th><th>{{ sr.billing_total }}</th></tr>\n</table>\n{% endif %}\n</div>",
+ "idx": 0,
+ "modified": "2026-08-16 22:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Garage Management",
+ "name": "Service Report",
+ "owner": "Administrator",
+ "print_format_builder": 0,
+ "print_format_builder_beta": 0,
+ "print_format_type": "Jinja",
+ "raw_printing": 0,
+ "show_section_headings": 0,
+ "standard": "Yes"
+}

@@ -1,0 +1,106 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:job_type_name",
+ "creation": "2026-08-05 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "job_type_name",
+  "disabled",
+  "column_break_1",
+  "description",
+  "billing_section",
+  "billing_items",
+  "qc_section",
+  "qc_items"
+ ],
+ "fields": [
+  {
+   "fieldname": "job_type_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Job Type Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "disabled",
+   "fieldtype": "Check",
+   "label": "Disabled"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "billing_section",
+   "fieldtype": "Section Break",
+   "label": "Default Billing Items"
+  },
+  {
+   "fieldname": "billing_items",
+   "fieldtype": "Table",
+   "label": "Billing Items",
+   "options": "Job Type Billing Item"
+  },
+  {
+   "fieldname": "qc_section",
+   "fieldtype": "Section Break",
+   "label": "Default QC Checklist"
+  },
+  {
+   "fieldname": "qc_items",
+   "fieldtype": "Table",
+   "label": "QC Items",
+   "options": "Job Type QC Item"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-08-05 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Garage Management",
+ "name": "Job Type",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "Garage Manager",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Garage Front Desk"
+  },
+  {
+   "read": 1,
+   "role": "Garage Technician"
+  }
+ ],
+ "search_fields": "job_type_name",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

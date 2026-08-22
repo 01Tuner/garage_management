@@ -1,0 +1,23 @@
+{
+ "creation": "2026-08-05 10:00:00.000000",
+ "css": ".garage-print { font-family: sans-serif; } .garage-print table { width: 100%; border-collapse: collapse; margin-top: 12px; } .garage-print td, .garage-print th { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }",
+ "default_print_language": "en",
+ "disabled": 0,
+ "doc_type": "Inspection",
+ "docstatus": 0,
+ "doctype": "Print Format",
+ "font_size": 12,
+ "html": "<div class=\"garage-print\">\n<h2>Inspection Report</h2>\n<p>{{ doc.name }} &middot; {{ doc.customer_name }}</p>\n<table>\n<tr><th>Service Request</th><td>{{ doc.service_request }}</td><th>Status</th><td>{{ doc.status }}</td></tr>\n<tr><th>Assigned To</th><td colspan=\"3\">{{ doc.assigned_to or \"\" }}</td></tr>\n</table>\n{% if doc.part_results %}\n<h3>Part Inspection</h3>\n<table>\n<tr><th>Asset</th><th>Serial</th><th>Condition</th><th>Test Bench</th></tr>\n{% for row in doc.part_results %}\n<tr><td>{{ row.repair_asset }}</td><td>{{ row.serial_number or \"\" }}</td><td>{{ row.condition or \"\" }}</td><td>{{ row.test_bench_results or \"\" }}</td></tr>\n{% endfor %}\n</table>\n{% endif %}\n{% if doc.findings %}\n<h3>Findings</h3>\n<ul>{% for row in doc.findings %}<li>{{ row.inspection_finding }}</li>{% endfor %}</ul>\n{% endif %}\n{% if doc.key_replacement_items %}\n<h3>Key Replacement Items</h3>\n<ul>{% for row in doc.key_replacement_items %}<li>{{ row.item_code }}</li>{% endfor %}</ul>\n{% endif %}\n<h3>Notes</h3>\n<div>{{ doc.inspection_notes or \"\" }}</div>\n<h3>Recommended Work</h3>\n<div>{{ doc.recommended_work or \"\" }}</div>\n</div>",
+ "idx": 0,
+ "modified": "2026-08-16 22:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Garage Management",
+ "name": "Inspection Report",
+ "owner": "Administrator",
+ "print_format_builder": 0,
+ "print_format_builder_beta": 0,
+ "print_format_type": "Jinja",
+ "raw_printing": 0,
+ "show_section_headings": 0,
+ "standard": "Yes"
+}

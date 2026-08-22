@@ -1,0 +1,426 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2026-08-05 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "details_tab",
+  "naming_series",
+  "status",
+  "priority",
+  "column_break_header",
+  "company",
+  "received_date",
+  "customer_section",
+  "customer",
+  "customer_name",
+  "mobile_no",
+  "column_break_customer",
+  "contact_person",
+  "customer_address",
+  "part_section",
+  "components",
+  "engine_vehicle_notes",
+  "complaint",
+  "assignment_section",
+  "job_type",
+  "technician",
+  "column_break_assign",
+  "warranty_days",
+  "warranty_expiry",
+  "inspection_tab",
+  "inspection_section",
+  "findings",
+  "key_replacement_items",
+  "inspection_notes",
+  "recommended_work",
+  "billing_tab",
+  "billing_section",
+  "billing_items",
+  "billing_total",
+  "qc_tab",
+  "qc_section",
+  "qc_items",
+  "commercial_tab",
+  "commercial_section",
+  "commercial_html",
+  "quotation",
+  "sales_order",
+  "column_break_commercial",
+  "sales_invoice",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Details"
+  },
+  {
+   "default": "SJ-.YYYY.-.####",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "no_copy": 1,
+   "options": "SJ-.YYYY.-.####",
+   "reqd": 1,
+   "set_only_once": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "Received",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Received\nInspecting\nQuoted\nAwaiting Approval\nIn Progress\nTesting\nCompleted\nInvoiced\nDelivered\nOn Hold\nCancelled",
+   "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "Normal",
+   "fieldname": "priority",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Priority",
+   "options": "Low\nNormal\nHigh\nUrgent"
+  },
+  {
+   "fieldname": "column_break_header",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "default": "Now",
+   "fieldname": "received_date",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Received Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "customer_section",
+   "fieldtype": "Section Break",
+   "label": "Customer"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Customer",
+   "options": "Customer",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "customer.customer_name",
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "label": "Customer Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "mobile_no",
+   "fieldtype": "Data",
+   "label": "Mobile No",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "column_break_customer",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "contact_person",
+   "fieldtype": "Link",
+   "label": "Contact Person",
+   "options": "Contact"
+  },
+  {
+   "fieldname": "customer_address",
+   "fieldtype": "Small Text",
+   "label": "Address"
+  },
+  {
+   "fieldname": "part_section",
+   "fieldtype": "Section Break",
+   "label": "Customer Owned Parts"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "components",
+   "fieldtype": "Table",
+   "label": "Components",
+   "options": "Service Job Component",
+   "reqd": 1
+  },
+  {
+   "fieldname": "engine_vehicle_notes",
+   "fieldtype": "Small Text",
+   "label": "Engine / Vehicle Notes"
+  },
+  {
+   "fieldname": "complaint",
+   "fieldtype": "Small Text",
+   "label": "Complaint"
+  },
+  {
+   "fieldname": "assignment_section",
+   "fieldtype": "Section Break",
+   "label": "Assignment"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "job_type",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Job Type",
+   "options": "Job Type"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "technician",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Technician",
+   "options": "User"
+  },
+  {
+   "fieldname": "column_break_assign",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "warranty_days",
+   "fieldtype": "Int",
+   "label": "Warranty Days"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "warranty_expiry",
+   "fieldtype": "Date",
+   "label": "Warranty Expiry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "inspection_tab",
+   "fieldtype": "Tab Break",
+   "label": "Inspection"
+  },
+  {
+   "fieldname": "inspection_section",
+   "fieldtype": "Section Break",
+   "label": "Technician Notes"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "findings",
+   "fieldtype": "Table MultiSelect",
+   "label": "Findings",
+   "options": "Service Job Inspection Finding"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "key_replacement_items",
+   "fieldtype": "Table MultiSelect",
+   "label": "Key Replacement Items",
+   "options": "Service Job Key Replacement Item"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "inspection_notes",
+   "fieldtype": "Text Editor",
+   "label": "Inspection Notes"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "recommended_work",
+   "fieldtype": "Text Editor",
+   "label": "Recommended Work"
+  },
+  {
+   "fieldname": "billing_tab",
+   "fieldtype": "Tab Break",
+   "label": "Billing"
+  },
+  {
+   "fieldname": "billing_section",
+   "fieldtype": "Section Break",
+   "label": "Services and Spare Parts"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "billing_items",
+   "fieldtype": "Table",
+   "label": "Billing Items",
+   "options": "Service Job Billing Item"
+  },
+  {
+   "fieldname": "billing_total",
+   "fieldtype": "Currency",
+   "label": "Billing Total",
+   "read_only": 1
+  },
+  {
+   "fieldname": "qc_tab",
+   "fieldtype": "Tab Break",
+   "label": "QC"
+  },
+  {
+   "fieldname": "qc_section",
+   "fieldtype": "Section Break",
+   "label": "Quality Checklist"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "qc_items",
+   "fieldtype": "Table",
+   "label": "QC Items",
+   "options": "Service Job QC Item"
+  },
+  {
+   "fieldname": "commercial_tab",
+   "fieldtype": "Tab Break",
+   "label": "Commercial"
+  },
+  {
+   "fieldname": "commercial_section",
+   "fieldtype": "Section Break",
+   "label": "Linked Documents"
+  },
+  {
+   "fieldname": "commercial_html",
+   "fieldtype": "HTML",
+   "label": "Related Documents"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "quotation",
+   "fieldtype": "Link",
+   "label": "Quotation",
+   "options": "Quotation",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "label": "Sales Order",
+   "options": "Sales Order",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_commercial",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "sales_invoice",
+   "fieldtype": "Link",
+   "label": "Sales Invoice",
+   "options": "Sales Invoice",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Service Job",
+   "print_hide": 1,
+   "read_only": 1
+  }
+ ],
+ "in_create": 0,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-08-08 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Garage Management",
+ "name": "Service Job",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Garage Manager"
+  }
+ ],
+ "search_fields": "customer_name,status,mobile_no,complaint",
+ "show_title_field_in_link": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [
+  {
+   "color": "Blue",
+   "title": "Received"
+  },
+  {
+   "color": "Orange",
+   "title": "Inspecting"
+  },
+  {
+   "color": "Yellow",
+   "title": "Quoted"
+  },
+  {
+   "color": "Purple",
+   "title": "Awaiting Approval"
+  },
+  {
+   "color": "Cyan",
+   "title": "In Progress"
+  },
+  {
+   "color": "Pink",
+   "title": "Testing"
+  },
+  {
+   "color": "Green",
+   "title": "Completed"
+  },
+  {
+   "color": "Green",
+   "title": "Invoiced"
+  },
+  {
+   "color": "Gray",
+   "title": "Delivered"
+  },
+  {
+   "color": "Red",
+   "title": "Cancelled"
+  }
+ ],
+ "title_field": "customer_name",
+ "track_changes": 1,
+ "track_seen": 1
+}
