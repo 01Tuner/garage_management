@@ -12,7 +12,7 @@ app_description = "Garage management for ERPNext"
 app_email = "muhammedrafeeq93@gmail.com"
 app_license = "mit"
 
-required_apps = ["erpnext", "ksa_compliance"]
+required_apps = ["erpnext"]
 
 app_include_css = "/assets/garage_management/css/garage_workspace.css"
 app_include_js = "/assets/garage_management/js/service_job_kanban.js"
