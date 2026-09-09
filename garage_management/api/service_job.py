@@ -58,7 +58,6 @@ def create_quotation(service_job):
 		quotation.set_taxes()
 
 	quotation.insert(ignore_permissions=True)
-	quotation.submit()
 
 	job.db_set(
 		{

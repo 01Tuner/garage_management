@@ -15,33 +15,43 @@
   "column_break_header",
   "company",
   "received_date",
+  "inspection_status",
+  "repair_status",
   "customer_section",
   "customer",
   "customer_name",
-  "mobile_no",
   "column_break_customer",
-  "contact_person",
+  "contact_details",
   "customer_address",
+  "contact_person",
+  "mobile_no",
   "part_section",
   "components",
   "engine_vehicle_notes",
   "complaint",
+  "photos_section",
+  "photos",
   "assignment_section",
   "job_type",
   "column_break_assign",
   "warranty_days",
   "warranty_expiry",
-  "work_tab",
-  "tracking_section",
-  "tracking_html",
-  "billing_tab",
+  "inspection_tab",
+  "inspection_section",
+  "inspection_html",
+  "quotation_tab",
+  "quotation_section",
+  "quotation_html",
   "billing_section",
   "billing_items",
   "billing_total",
-  "commercial_tab",
-  "commercial_section",
-  "commercial_html",
   "quotation",
+  "repair_jobs_tab",
+  "repair_jobs_section",
+  "repair_jobs_html",
+  "invoice_tab",
+  "invoice_section",
+  "invoice_html",
   "sales_order",
   "column_break_commercial",
   "sales_invoice",
@@ -52,7 +62,7 @@
   {
    "fieldname": "details_tab",
    "fieldtype": "Tab Break",
-   "label": "Details"
+   "label": "Registration"
   },
   {
    "default": "SR-.YYYY.-.####",
@@ -105,6 +115,28 @@
    "reqd": 1
   },
   {
+   "default": "Pending",
+   "fieldname": "inspection_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Inspection Status",
+   "no_copy": 1,
+   "options": "Pending\nDraft\nIn Progress\nCompleted\nCancelled",
+   "read_only": 1
+  },
+  {
+   "default": "Pending",
+   "fieldname": "repair_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Repair Status",
+   "no_copy": 1,
+   "options": "Pending\nDraft\nIn Progress\nTesting\nCompleted\nCancelled",
+   "read_only": 1
+  },
+  {
    "fieldname": "customer_section",
    "fieldtype": "Section Break",
    "label": "Customer"
@@ -126,25 +158,36 @@
    "read_only": 1
   },
   {
-   "fieldname": "mobile_no",
-   "fieldtype": "Data",
-   "label": "Mobile No",
-   "options": "Phone"
-  },
-  {
    "fieldname": "column_break_customer",
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "contact_person",
-   "fieldtype": "Link",
-   "label": "Contact Person",
-   "options": "Contact"
+   "fieldname": "contact_details",
+   "fieldtype": "Small Text",
+   "label": "Contact Details",
+   "read_only": 1
   },
   {
    "fieldname": "customer_address",
    "fieldtype": "Small Text",
-   "label": "Address"
+   "label": "Address",
+   "read_only": 1
+  },
+  {
+   "fieldname": "contact_person",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Contact Person",
+   "options": "Contact",
+   "read_only": 1
+  },
+  {
+   "fieldname": "mobile_no",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Mobile No",
+   "options": "Phone",
+   "read_only": 1
   },
   {
    "fieldname": "part_section",
@@ -168,6 +211,17 @@
    "fieldname": "complaint",
    "fieldtype": "Small Text",
    "label": "Complaint"
+  },
+  {
+   "fieldname": "photos_section",
+   "fieldtype": "Section Break",
+   "label": "Registration Photos"
+  },
+  {
+   "fieldname": "photos",
+   "fieldtype": "Table",
+   "label": "Registration Photos",
+   "options": "Service Job Photo"
   },
   {
    "fieldname": "assignment_section",
@@ -200,24 +254,34 @@
    "read_only": 1
   },
   {
-   "fieldname": "work_tab",
+   "fieldname": "inspection_tab",
    "fieldtype": "Tab Break",
-   "label": "Work"
+   "label": "Inspection"
   },
   {
-   "fieldname": "tracking_section",
+   "fieldname": "inspection_section",
    "fieldtype": "Section Break",
-   "label": "Inspections and Repair Jobs"
+   "label": "Inspection Reports"
   },
   {
-   "fieldname": "tracking_html",
+   "fieldname": "inspection_html",
    "fieldtype": "HTML",
-   "label": "Linked Work"
+   "label": "Inspections"
   },
   {
-   "fieldname": "billing_tab",
+   "fieldname": "quotation_tab",
    "fieldtype": "Tab Break",
-   "label": "Billing"
+   "label": "Quotation"
+  },
+  {
+   "fieldname": "quotation_section",
+   "fieldtype": "Section Break",
+   "label": "Quotation & Estimation"
+  },
+  {
+   "fieldname": "quotation_html",
+   "fieldtype": "HTML",
+   "label": "Quotation Status"
   },
   {
    "fieldname": "billing_section",
@@ -238,27 +302,42 @@
    "read_only": 1
   },
   {
-   "fieldname": "commercial_tab",
-   "fieldtype": "Tab Break",
-   "label": "Commercial"
-  },
-  {
-   "fieldname": "commercial_section",
-   "fieldtype": "Section Break",
-   "label": "Linked Documents"
-  },
-  {
-   "fieldname": "commercial_html",
-   "fieldtype": "HTML",
-   "label": "Related Documents"
-  },
-  {
    "allow_on_submit": 1,
    "fieldname": "quotation",
    "fieldtype": "Link",
    "label": "Quotation",
    "options": "Quotation",
    "read_only": 1
+  },
+  {
+   "fieldname": "repair_jobs_tab",
+   "fieldtype": "Tab Break",
+   "label": "Repair Jobs"
+  },
+  {
+   "fieldname": "repair_jobs_section",
+   "fieldtype": "Section Break",
+   "label": "Repair Work & QC Tracking"
+  },
+  {
+   "fieldname": "repair_jobs_html",
+   "fieldtype": "HTML",
+   "label": "Repair Jobs"
+  },
+  {
+   "fieldname": "invoice_tab",
+   "fieldtype": "Tab Break",
+   "label": "Invoice"
+  },
+  {
+   "fieldname": "invoice_section",
+   "fieldtype": "Section Break",
+   "label": "Invoicing & Commercial Documents"
+  },
+  {
+   "fieldname": "invoice_html",
+   "fieldtype": "HTML",
+   "label": "Invoice Status"
   },
   {
    "allow_on_submit": 1,
@@ -312,7 +391,7 @@
    "link_fieldname": "service_request"
   }
  ],
- "modified": "2026-08-16 22:00:00.000000",
+ "modified": "2026-09-07 23:00:00.000000",
  "modified_by": "Administrator",
  "module": "Garage Management",
  "name": "Service Request",

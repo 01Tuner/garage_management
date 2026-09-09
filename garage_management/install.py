@@ -17,9 +17,11 @@ def after_install():
 	create_workspace_artifacts()
 	from garage_management.patches.v1_0.seed_garage_masters import seed_part_types
 	from garage_management.patches.v1_0.seed_inspection_findings import seed_inspection_findings
+	from garage_management.patches.v1_0.seed_key_replacement_items import seed_key_replacement_items
 
 	seed_part_types()
 	seed_inspection_findings()
+	seed_key_replacement_items()
 	frappe.clear_cache()
 
 
@@ -32,10 +34,12 @@ def after_migrate():
 	create_workspace_artifacts()
 	from garage_management.patches.v1_0.seed_garage_masters import seed_part_types
 	from garage_management.patches.v1_0.seed_inspection_findings import seed_inspection_findings
+	from garage_management.patches.v1_0.seed_key_replacement_items import seed_key_replacement_items
 	from garage_management.patches.v1_0.split_service_job_to_request import _remap_commercial_links
 
 	seed_part_types()
 	seed_inspection_findings()
+	seed_key_replacement_items()
 	_remap_commercial_links()
 
 

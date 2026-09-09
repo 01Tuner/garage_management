@@ -16,9 +16,21 @@ class Inspection(Document):
 
 	def validate(self):
 		self.sync_fetched_fields()
+		self.enforce_photo_stages()
+		self.validate_service_request_status()
 
 	def on_update(self):
 		self.bump_parent_status()
+		if self.service_request:
+			from garage_management.api.service_request import sync_job_sub_statuses
+
+			sync_job_sub_statuses(self.service_request)
+
+	def on_trash(self):
+		if self.service_request:
+			from garage_management.api.service_request import sync_job_sub_statuses
+
+			sync_job_sub_statuses(self.service_request)
 
 	def sync_fetched_fields(self):
 		if not self.service_request:
@@ -26,13 +38,26 @@ class Inspection(Document):
 		values = frappe.db.get_value(
 			"Service Request",
 			self.service_request,
-			["customer", "customer_name", "company"],
+			["customer", "customer_name", "company", "status"],
 			as_dict=True,
 		)
 		if values:
 			self.customer = values.customer
 			self.customer_name = values.customer_name
 			self.company = values.company
+
+	def enforce_photo_stages(self):
+		"""Ensure all photos in Inspection are tagged as Inspection stage."""
+		for row in self.photos or []:
+			row.stage = "Inspection"
+
+	def validate_service_request_status(self):
+		"""Prevent creating/editing inspection on a cancelled Service Request."""
+		if not self.service_request:
+			return
+		sr_status = frappe.db.get_value("Service Request", self.service_request, "status")
+		if sr_status == "Cancelled":
+			frappe.throw(_("Cannot create/update an Inspection for a Cancelled Service Request"))
 
 	def pull_request_parts_if_empty(self):
 		if self.part_results or not self.service_request:
@@ -61,6 +86,25 @@ class Inspection(Document):
 			frappe.throw(_("Save the Inspection first"))
 		sr = frappe.get_doc("Service Request", self.service_request)
 		return sr.create_repair_job(assigned_to=assigned_to or self.assigned_to, inspection=self.name)
+
+	@frappe.whitelist()
+	def complete_inspection(self):
+		self.db_set("status", "Completed", update_modified=True)
+		# Also sync key replacement items to billing if needed
+		if self.service_request:
+			from garage_management.api.service_request import sync_inspection_items_to_billing
+
+			sync_inspection_items_to_billing(self.service_request)
+		frappe.msgprint(_("Inspection {0} marked as Completed").format(self.name), indicator="green", alert=True)
+		return self.name
+
+	@frappe.whitelist()
+	def sync_to_billing(self):
+		if not self.service_request:
+			frappe.throw(_("No Service Request linked"))
+		from garage_management.api.service_request import sync_inspection_items_to_billing
+
+		return sync_inspection_items_to_billing(self.service_request)
 
 
 @frappe.whitelist()

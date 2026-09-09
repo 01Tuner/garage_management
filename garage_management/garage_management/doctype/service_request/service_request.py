@@ -14,11 +14,29 @@ class ServiceRequest(Document):
 		self.set_defaults()
 		self.calculate_billing_total()
 		self.set_warranty_expiry()
-		self.fetch_customer_mobile()
+		self.fetch_customer_contacts_and_address()
+		self.enforce_photo_stages()
+		self.sync_sub_statuses()
 		if not self.components and not (
 			self.flags.ignore_component_check or self.flags.ignore_missing_components
 		):
 			frappe.throw(_("Add at least one Customer Owned Part / Component"))
+
+	def sync_sub_statuses(self):
+		if self.is_new():
+			if not self.inspection_status:
+				self.inspection_status = "Pending"
+			if not self.repair_status:
+				self.repair_status = "Pending"
+			return
+
+		from garage_management.api.service_request import sync_job_sub_statuses
+
+		insp_s, rep_s = sync_job_sub_statuses(self.name)
+		if insp_s:
+			self.inspection_status = insp_s
+		if rep_s:
+			self.repair_status = rep_s
 
 	def before_submit(self):
 		if self.status == "Cancelled":
@@ -44,9 +62,31 @@ class ServiceRequest(Document):
 			settings = frappe.get_cached_doc("Service Job Settings")
 			self.warranty_days = cint(settings.default_warranty_days) or 30
 
-	def fetch_customer_mobile(self):
-		if self.customer and not self.mobile_no:
-			self.mobile_no = frappe.db.get_value("Customer", self.customer, "mobile_no")
+	def enforce_photo_stages(self):
+		"""Ensure all photos in Service Request are tagged as Receiving stage."""
+		for row in self.photos or []:
+			row.stage = "Receiving"
+
+	def fetch_customer_contacts_and_address(self):
+		if not self.customer:
+			return
+
+		customer_changed = self.has_value_changed("customer")
+		from garage_management.api.service_request import (
+			get_customer_address_display,
+			get_customer_contact_details,
+		)
+
+		if not self.customer_address or customer_changed:
+			self.customer_address = get_customer_address_display(self.customer)
+
+		if not self.contact_details or customer_changed or not self.mobile_no:
+			details = get_customer_contact_details(self.customer)
+			self.contact_details = details.get("contact_details") or ""
+			if details.get("contact_person"):
+				self.contact_person = details.get("contact_person")
+			if details.get("mobile_no"):
+				self.mobile_no = details.get("mobile_no")
 
 	def calculate_billing_total(self):
 		total = 0
@@ -191,6 +231,12 @@ class ServiceRequest(Document):
 			job.load_job_type_defaults()
 		job.insert(ignore_permissions=True)
 		return job.name
+
+	@frappe.whitelist()
+	def sync_inspection_items(self):
+		from garage_management.api.service_request import sync_inspection_items_to_billing
+
+		return sync_inspection_items_to_billing(self.name)
 
 
 @frappe.whitelist()

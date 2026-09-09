@@ -22,7 +22,9 @@
   "findings",
   "key_replacement_items",
   "inspection_notes",
-  "recommended_work"
+  "recommended_work",
+  "photos_section",
+  "photos"
  ],
  "fields": [
   {
@@ -134,11 +136,22 @@
    "fieldname": "recommended_work",
    "fieldtype": "Text Editor",
    "label": "Recommended Work"
+  },
+  {
+   "fieldname": "photos_section",
+   "fieldtype": "Section Break",
+   "label": "Inspection Photos"
+  },
+  {
+   "fieldname": "photos",
+   "fieldtype": "Table",
+   "label": "Inspection Photos",
+   "options": "Service Job Photo"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-08-16 22:00:00.000000",
+ "modified": "2026-09-07 23:00:00.000000",
  "modified_by": "Administrator",
  "module": "Garage Management",
  "name": "Inspection",

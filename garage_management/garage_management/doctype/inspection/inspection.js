@@ -10,7 +10,7 @@ frappe.ui.form.on("Inspection", {
 			filters: {
 				disabled: 0,
 				is_sales_item: 1,
-				item_group: "Key Replacement Items",
+				item_group: ["in", ["Key Replacement Items", "Spare Parts"]],
 			},
 		}));
 		frm.set_query("repair_asset", "part_results", () => ({
@@ -19,27 +19,37 @@ frappe.ui.form.on("Inspection", {
 	},
 
 	refresh(frm) {
+		if (frm.is_new()) return;
+
+		// --- VIEW MENU ---
 		if (frm.doc.service_request) {
-			frm.add_custom_button(__("Open Service Request"), () => {
+			frm.add_custom_button(__("Service Request"), () => {
 				frappe.set_route("Form", "Service Request", frm.doc.service_request);
-			});
+			}, __("View"));
 		}
-		if (!frm.is_new()) {
-			frm.add_custom_button(__("Inspection Report"), () => {
-				window.open(
-					frappe.urllib.get_full_url(
-						"/printview?doctype=Inspection&name=" +
-							encodeURIComponent(frm.doc.name) +
-							"&format=" +
-							encodeURIComponent("Inspection Report") +
-							"&no_letterhead=0"
-					),
-					"_blank"
-				);
-			}, __("Print"));
+
+		frm.add_custom_button(__("Repair Jobs"), () => {
+			frappe.set_route("List", "Repair Job", { inspection: frm.doc.name });
+		}, __("View"));
+
+		// --- CREATE MENU ---
+		if (frm.doc.service_request) {
+			frm.add_custom_button(__("Quotation"), () => {
+				frappe.call({
+					method: "garage_management.api.service_request.create_quotation",
+					args: { service_request: frm.doc.service_request },
+					freeze: true,
+					callback(r) {
+						if (!r.message) return;
+						frappe.show_alert({ message: __("Quotation {0} created as Draft", [r.message]), indicator: "green" });
+						frappe.set_route("Form", "Quotation", r.message);
+					},
+				});
+			}, __("Create"));
 		}
-		if (!frm.is_new() && frm.doc.status !== "Cancelled") {
-			frm.add_custom_button(__("Create Repair Job"), () => {
+
+		if (frm.doc.status !== "Cancelled") {
+			frm.add_custom_button(__("Repair Job"), () => {
 				frappe.prompt(
 					[
 						{
@@ -65,8 +75,49 @@ frappe.ui.form.on("Inspection", {
 					},
 					__("Create Repair Job")
 				);
-			});
+			}, __("Create"));
 		}
+
+		// --- ACTIONS MENU ---
+		if (frm.doc.status !== "Completed" && frm.doc.status !== "Cancelled") {
+			frm.add_custom_button(__("Complete Inspection"), () => {
+				frm.call({
+					doc: frm.doc,
+					method: "complete_inspection",
+					freeze: true,
+					callback() {
+						frm.reload_doc();
+					},
+				});
+			}, __("Actions"));
+		}
+
+		if (frm.doc.service_request) {
+			frm.add_custom_button(__("Sync Items to Billing"), () => {
+				frm.call({
+					doc: frm.doc,
+					method: "sync_to_billing",
+					freeze: true,
+					callback() {
+						frappe.show_alert({ message: __("Inspection items synced to Service Request billing"), indicator: "green" });
+					},
+				});
+			}, __("Actions"));
+		}
+
+		// --- PRINT MENU ---
+		frm.add_custom_button(__("Inspection Report"), () => {
+			window.open(
+				frappe.urllib.get_full_url(
+					"/printview?doctype=Inspection&name=" +
+						encodeURIComponent(frm.doc.name) +
+						"&format=" +
+						encodeURIComponent("Inspection Report") +
+						"&no_letterhead=0"
+				),
+				"_blank"
+			);
+		}, __("Print"));
 	},
 
 	service_request(frm) {
@@ -82,5 +133,19 @@ frappe.ui.form.on("Inspection", {
 			});
 			frm.refresh_field("part_results");
 		});
+	},
+	before_save(frm) {
+		(frm.doc.photos || []).forEach((row) => {
+			row.stage = "Inspection";
+		});
+	},
+});
+
+frappe.ui.form.on("Service Job Photo", {
+	photos_add(frm, cdt, cdn) {
+		frappe.model.set_value(cdt, cdn, "stage", "Inspection");
+	},
+	form_render(frm, cdt, cdn) {
+		frappe.model.set_value(cdt, cdn, "stage", "Inspection");
 	},
 });

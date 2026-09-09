@@ -64,8 +64,20 @@
 		});
 	}
 
+	function enable_camera_for_attach_image() {
+		if (frappe.ui?.form?.ControlAttachImage && !frappe.ui.form.ControlAttachImage.__camera_enabled) {
+			const orig_set_upload = frappe.ui.form.ControlAttachImage.prototype.set_upload_options;
+			frappe.ui.form.ControlAttachImage.prototype.set_upload_options = function () {
+				orig_set_upload.call(this);
+				this.upload_options.allow_take_photo = true;
+			};
+			frappe.ui.form.ControlAttachImage.__camera_enabled = true;
+		}
+	}
+
 	$(document).on("app_ready", () => {
 		patch_kanban_card();
+		enable_camera_for_attach_image();
 	});
 
 	const observer = new MutationObserver(() => {
@@ -76,6 +88,7 @@
 
 	$(document).ready(() => {
 		patch_kanban_card();
+		enable_camera_for_attach_image();
 		const board = document.querySelector(".kanban") || document.body;
 		observer.observe(board, { childList: true, subtree: true });
 	});

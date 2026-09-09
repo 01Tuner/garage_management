@@ -14,10 +14,9 @@
    "default": "Receiving",
    "fieldname": "stage",
    "fieldtype": "Select",
-   "in_list_view": 1,
+   "hidden": 1,
    "label": "Stage",
-   "options": "Receiving\nInspection\nCompletion",
-   "reqd": 1
+   "options": "Receiving\nInspection\nCompletion"
   },
   {
    "fieldname": "image",
@@ -29,6 +28,7 @@
   {
    "fieldname": "notes",
    "fieldtype": "Small Text",
+   "in_list_view": 1,
    "label": "Notes"
   }
  ],

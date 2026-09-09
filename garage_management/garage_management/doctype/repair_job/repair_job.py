@@ -17,6 +17,9 @@ class RepairJob(Document):
 
 	def validate(self):
 		self.sync_fetched_fields()
+		self.enforce_photo_stages()
+		self.validate_service_request_status()
+		self.validate_status_transition()
 		if self.inspection:
 			parent = frappe.db.get_value("Inspection", self.inspection, "service_request")
 			if parent and parent != self.service_request:
@@ -24,6 +27,16 @@ class RepairJob(Document):
 
 	def on_update(self):
 		self.bump_parent_status()
+		if self.service_request:
+			from garage_management.api.service_request import sync_job_sub_statuses
+
+			sync_job_sub_statuses(self.service_request)
+
+	def on_trash(self):
+		if self.service_request:
+			from garage_management.api.service_request import sync_job_sub_statuses
+
+			sync_job_sub_statuses(self.service_request)
 
 	def sync_fetched_fields(self):
 		if not self.service_request:
@@ -38,6 +51,34 @@ class RepairJob(Document):
 			self.customer = values.customer
 			self.customer_name = values.customer_name
 			self.company = values.company
+
+	def enforce_photo_stages(self):
+		"""Ensure all photos in Repair Job are tagged as Completion stage."""
+		for row in self.photos or []:
+			row.stage = "Completion"
+
+	def validate_service_request_status(self):
+		"""Prevent creating/editing repair job on a cancelled Service Request."""
+		if not self.service_request:
+			return
+		sr_status = frappe.db.get_value("Service Request", self.service_request, "status")
+		if sr_status == "Cancelled":
+			frappe.throw(_("Cannot create/update a Repair Job for a Cancelled Service Request"))
+
+	def validate_status_transition(self):
+		"""Guard against invalid backwards status transitions."""
+		if self.is_new():
+			return
+		old_status = frappe.db.get_value("Repair Job", self.name, "status")
+		forward_order = ["Draft", "In Progress", "Testing", "Completed", "Cancelled"]
+		if old_status and self.status:
+			old_idx = forward_order.index(old_status) if old_status in forward_order else -1
+			new_idx = forward_order.index(self.status) if self.status in forward_order else -1
+			# Allow going to Cancelled from any state, block other backwards moves
+			if self.status != "Cancelled" and new_idx < old_idx:
+				frappe.throw(
+					_("Cannot move Repair Job status from {0} back to {1}").format(old_status, self.status)
+				)
 
 	def bump_parent_status(self):
 		if self.flags.skip_request_sync:
@@ -81,6 +122,27 @@ class RepairJob(Document):
 		for row in job_type.qc_items:
 			self.append("qc_items", {"test_name": row.test_name, "result": "Pending"})
 		return self
+
+	@frappe.whitelist()
+	def start_work(self):
+		self.db_set("status", "In Progress", update_modified=True)
+		self.bump_parent_status()
+		frappe.msgprint(_("Repair Job marked as In Progress"), indicator="green", alert=True)
+		return self.name
+
+	@frappe.whitelist()
+	def send_to_testing(self):
+		self.db_set("status", "Testing", update_modified=True)
+		self.bump_parent_status()
+		frappe.msgprint(_("Repair Job sent for Testing"), indicator="green", alert=True)
+		return self.name
+
+	@frappe.whitelist()
+	def mark_completed(self):
+		self.db_set("status", "Completed", update_modified=True)
+		self.bump_parent_status()
+		frappe.msgprint(_("Repair Job marked as Completed"), indicator="green", alert=True)
+		return self.name
 
 
 def get_permission_query_conditions(user=None):

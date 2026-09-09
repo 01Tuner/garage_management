@@ -21,33 +21,60 @@ frappe.ui.form.on("Service Request", {
 	},
 
 	refresh(frm) {
-		frm.trigger("render_workshop_panel");
-		frm.trigger("render_commercial_panel");
+		frm.set_df_property("contact_details", "read_only", 1);
+		frm.set_df_property("customer_address", "read_only", 1);
+		frm.set_df_property("inspection_status", "read_only", 1);
+		frm.set_df_property("repair_status", "read_only", 1);
+		frm.trigger("render_inspection_panel");
+		frm.trigger("render_quotation_panel");
+		frm.trigger("render_repair_jobs_panel");
+		frm.trigger("render_invoice_panel");
 		frm.trigger("toggle_buttons");
-		if (frm._focus_commercial_tab) {
-			frm._focus_commercial_tab = false;
-			frm.layout?.select_tab?.("commercial_tab");
+
+		if (frm.doc.customer && (!frm.doc.customer_address || !frm.doc.contact_details)) {
+			frm.trigger("fetch_customer_details");
 		}
+
+		if (frm._focus_tab) {
+			const targetTab = frm._focus_tab;
+			frm._focus_tab = null;
+			frm.layout?.select_tab?.(targetTab);
+		}
+	},
+
+	before_save(frm) {
+		(frm.doc.photos || []).forEach((row) => {
+			row.stage = "Receiving";
+		});
 	},
 
 	customer(frm) {
 		if (!frm.doc.customer) {
 			frm.set_value("contact_person", null);
+			frm.set_value("mobile_no", "");
+			frm.set_value("contact_details", "");
+			frm.set_value("customer_address", "");
 			return;
 		}
-		frappe.db.get_value("Customer", frm.doc.customer, "customer_primary_contact", (r) => {
-			if (r && r.customer_primary_contact && !frm.doc.contact_person) {
-				frm.set_value("contact_person", r.customer_primary_contact);
-			}
-		});
+		frm.trigger("fetch_customer_details");
 	},
 
-	contact_person(frm) {
-		if (!frm.doc.contact_person) return;
-		frappe.db.get_value("Contact", frm.doc.contact_person, "mobile_no", (r) => {
-			if (r && r.mobile_no && !frm.doc.mobile_no) {
-				frm.set_value("mobile_no", r.mobile_no);
-			}
+	fetch_customer_details(frm) {
+		if (!frm.doc.customer) return;
+		frappe.call({
+			method: "garage_management.api.service_request.get_customer_contact_and_address",
+			args: { customer: frm.doc.customer },
+			callback(r) {
+				const data = r.message || {};
+				frm.set_value("contact_details", data.contact_details || "");
+				frm.set_value("customer_address", data.address_display || "");
+				if (data.contact_person) {
+					frm.set_value("contact_person", data.contact_person);
+				}
+				if (data.mobile_no) {
+					frm.set_value("mobile_no", data.mobile_no);
+				}
+			},
 		});
 	},
 
@@ -67,11 +94,11 @@ frappe.ui.form.on("Service Request", {
 		frappe.show_alert({ message: __("Job Type billing defaults loaded"), indicator: "green" });
 	},
 
-	render_workshop_panel(frm) {
-		const wrap = frm.fields_dict.tracking_html?.$wrapper;
+	render_inspection_panel(frm) {
+		const wrap = frm.fields_dict.inspection_html?.$wrapper || frm.fields_dict.tracking_html?.$wrapper;
 		if (!wrap) return;
 		if (frm.is_new()) {
-			wrap.html(`<p class="text-muted">${__("Save the request to create Inspections and Repair Jobs.")}</p>`);
+			wrap.html(`<p class="text-muted" style="padding:10px;">${__("Save the Service Request to record Inspections.")}</p>`);
 			return;
 		}
 
@@ -80,7 +107,44 @@ frappe.ui.form.on("Service Request", {
 			args: { service_request: frm.doc.name },
 			callback(r) {
 				const data = r.message || { inspections: [], repair_jobs: [] };
-				wrap.html(workshop_table_html(data));
+				if (data.inspection_status && frm.doc.inspection_status !== data.inspection_status) {
+					frm.set_value("inspection_status", data.inspection_status);
+				}
+				if (data.repair_status && frm.doc.repair_status !== data.repair_status) {
+					frm.set_value("repair_status", data.repair_status);
+				}
+				const inspections = data.inspections || [];
+				let rows = inspections
+					.map(
+						(d) => `<tr>
+							<td><a href="${frappe.utils.get_form_link("Inspection", d.name)}"><b>${frappe.utils.escape_html(d.name)}</b></a></td>
+							<td><span class="indicator-pill ${status_color(d.status)}">${frappe.utils.escape_html(d.status || "Draft")}</span></td>
+							<td>${frappe.utils.escape_html(d.assigned_to || "")}</td>
+							<td class="text-right">
+								<button class="btn btn-xs btn-default garage-open-doc" data-doctype="Inspection" data-name="${frappe.utils.escape_html(d.name)}">${__("Open")}</button>
+								<button class="btn btn-xs btn-default garage-print-doc" data-doctype="Inspection" data-name="${frappe.utils.escape_html(d.name)}" data-format="Inspection Report">${__("Print")}</button>
+							</td>
+						</tr>`
+					)
+					.join("");
+
+				if (!rows) {
+					rows = `<tr><td colspan="4" class="text-muted text-center" style="padding:16px;">${__("No Inspections recorded yet. Click 'Create Inspection' to start.")}</td></tr>`;
+				}
+
+				wrap.html(`
+					<div class="garage-panel" style="margin-bottom:12px;padding:12px;border:1px solid var(--border-color);border-radius:8px;background:var(--control-bg);">
+						<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+							<h5 style="margin:0;">${__("Inspection Records")}</h5>
+							<button class="btn btn-xs btn-primary garage-new-insp">${__("Create Inspection")}</button>
+						</div>
+						<table class="table table-bordered" style="margin:0;background:var(--card-bg);">
+							<thead><tr><th>${__("Inspection ID")}</th><th>${__("Status")}</th><th>${__("Assigned To")}</th><th style="width:140px;"></th></tr></thead>
+							<tbody>${rows}</tbody>
+						</table>
+					</div>
+				`);
+
 				wrap.find(".garage-open-doc").on("click", (e) => {
 					e.preventDefault();
 					const $btn = $(e.currentTarget);
@@ -91,12 +155,159 @@ frappe.ui.form.on("Service Request", {
 					const $btn = $(e.currentTarget);
 					open_print($btn.data("doctype"), $btn.data("name"), $btn.data("format"));
 				});
+				wrap.find(".garage-new-insp").on("click", (e) => {
+					e.preventDefault();
+					prompt_assignee(frm, "inspection");
+				});
 			},
 		});
 	},
 
-	render_commercial_panel(frm) {
-		const wrap = frm.fields_dict.commercial_html?.$wrapper;
+	render_quotation_panel(frm) {
+		const wrap = frm.fields_dict.quotation_html?.$wrapper;
+		if (!wrap) return;
+
+		const bill = format_currency(frm.doc.billing_total || 0, frappe.defaults.get_default("currency"));
+		let quoteStatusHtml = "";
+
+		if (frm.doc.quotation) {
+			const href = frappe.utils.get_form_link("Quotation", frm.doc.quotation);
+			quoteStatusHtml = `
+				<div style="display:flex;justify-content:space-between;align-items:center;">
+					<div>
+						<b>${__("Linked Quotation")}:</b> <a href="${href}" style="font-weight:600;">${frappe.utils.escape_html(frm.doc.quotation)}</a>
+						<span style="margin-left:8px;" class="indicator-pill green">${__("Linked")}</span>
+					</div>
+					<div>
+						<button class="btn btn-xs btn-default garage-open-doc" data-doctype="Quotation" data-name="${frappe.utils.escape_html(frm.doc.quotation)}">${__("Open Quotation")}</button>
+					</div>
+				</div>
+			`;
+		} else {
+			quoteStatusHtml = `
+				<div style="display:flex;justify-content:space-between;align-items:center;">
+					<span class="text-muted">${__("Quotation not created yet. Add billing items below or click Create Quotation.")}</span>
+					<div>
+						<button class="btn btn-xs btn-primary garage-create-quote">${__("Create Quotation")}</button>
+					</div>
+				</div>
+			`;
+		}
+
+		wrap.html(`
+			<div class="garage-panel" style="margin-bottom:12px;padding:12px;border:1px solid var(--border-color);border-radius:8px;background:var(--control-bg);">
+				<div style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+					<div><b>${__("Estimated Billing Total")}:</b> <span class="h5 text-primary" style="margin:0 0 0 6px;">${bill}</span></div>
+					<div>
+						<button class="btn btn-xs btn-default garage-sync-insp" style="margin-right:6px;">${__("Sync Items from Inspection")}</button>
+						<button class="btn btn-xs btn-default garage-load-defaults">${__("Load Job Type Defaults")}</button>
+					</div>
+				</div>
+				<hr style="margin:8px 0;"/>
+				${quoteStatusHtml}
+			</div>
+		`);
+
+		wrap.find(".garage-open-doc").on("click", (e) => {
+			e.preventDefault();
+			const $btn = $(e.currentTarget);
+			frappe.set_route("Form", $btn.data("doctype"), $btn.data("name"));
+		});
+		wrap.find(".garage-create-quote").on("click", (e) => {
+			e.preventDefault();
+			frappe.call({
+				method: "garage_management.api.service_request.create_quotation",
+				args: { service_request: frm.doc.name },
+				freeze: true,
+				callback(r) {
+					if (!r.message) return;
+					after_commercial_created(frm, "Quotation", r.message);
+				},
+			});
+		});
+		wrap.find(".garage-sync-insp").on("click", (e) => {
+			e.preventDefault();
+			frappe.call({
+				method: "garage_management.api.service_request.sync_inspection_items_to_billing",
+				args: { service_request: frm.doc.name },
+				freeze: true,
+				callback() {
+					frm.reload_doc();
+				},
+			});
+		});
+		wrap.find(".garage-load-defaults").on("click", (e) => {
+			e.preventDefault();
+			frm.trigger("load_job_type_defaults");
+		});
+	},
+
+	render_repair_jobs_panel(frm) {
+		const wrap = frm.fields_dict.repair_jobs_html?.$wrapper;
+		if (!wrap) return;
+		if (frm.is_new()) {
+			wrap.html(`<p class="text-muted" style="padding:10px;">${__("Save the Service Request to create Repair Jobs.")}</p>`);
+			return;
+		}
+
+		frappe.call({
+			method: "garage_management.api.service_request.get_workshop_docs",
+			args: { service_request: frm.doc.name },
+			callback(r) {
+				const data = r.message || { inspections: [], repair_jobs: [] };
+				const jobs = data.repair_jobs || [];
+				let rows = jobs
+					.map(
+						(d) => `<tr>
+							<td><a href="${frappe.utils.get_form_link("Repair Job", d.name)}"><b>${frappe.utils.escape_html(d.name)}</b></a></td>
+							<td><span class="indicator-pill ${status_color(d.status)}">${frappe.utils.escape_html(d.status || "Draft")}</span></td>
+							<td>${frappe.utils.escape_html(d.assigned_to || "")}</td>
+							<td>${frappe.utils.escape_html(d.job_type || "")}</td>
+							<td class="text-right">
+								<button class="btn btn-xs btn-default garage-open-doc" data-doctype="Repair Job" data-name="${frappe.utils.escape_html(d.name)}">${__("Open")}</button>
+								<button class="btn btn-xs btn-default garage-print-doc" data-doctype="Repair Job" data-name="${frappe.utils.escape_html(d.name)}" data-format="Job Repair Report">${__("Print")}</button>
+							</td>
+						</tr>`
+					)
+					.join("");
+
+				if (!rows) {
+					rows = `<tr><td colspan="5" class="text-muted text-center" style="padding:16px;">${__("No Repair Jobs created yet. Click 'Create Repair Job' to assign work.")}</td></tr>`;
+				}
+
+				wrap.html(`
+					<div class="garage-panel" style="margin-bottom:12px;padding:12px;border:1px solid var(--border-color);border-radius:8px;background:var(--control-bg);">
+						<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+							<h5 style="margin:0;">${__("Repair Jobs & Work Orders")}</h5>
+							<button class="btn btn-xs btn-primary garage-new-job">${__("Create Repair Job")}</button>
+						</div>
+						<table class="table table-bordered" style="margin:0;background:var(--card-bg);">
+							<thead><tr><th>${__("Repair Job")}</th><th>${__("Status")}</th><th>${__("Assigned To")}</th><th>${__("Job Type")}</th><th style="width:140px;"></th></tr></thead>
+							<tbody>${rows}</tbody>
+						</table>
+					</div>
+				`);
+
+				wrap.find(".garage-open-doc").on("click", (e) => {
+					e.preventDefault();
+					const $btn = $(e.currentTarget);
+					frappe.set_route("Form", $btn.data("doctype"), $btn.data("name"));
+				});
+				wrap.find(".garage-print-doc").on("click", (e) => {
+					e.preventDefault();
+					const $btn = $(e.currentTarget);
+					open_print($btn.data("doctype"), $btn.data("name"), $btn.data("format"));
+				});
+				wrap.find(".garage-new-job").on("click", (e) => {
+					e.preventDefault();
+					prompt_assignee(frm, "repair_job");
+				});
+			},
+		});
+	},
+
+	render_invoice_panel(frm) {
+		const wrap = frm.fields_dict.invoice_html?.$wrapper || frm.fields_dict.commercial_html?.$wrapper;
 		if (!wrap) return;
 
 		const rows = [
@@ -114,7 +325,7 @@ frappe.ui.form.on("Service Request", {
 					return `<tr>
 						<td><b>${row.label}</b></td>
 						<td><a href="${href}" class="garage-related-doc">${frappe.utils.escape_html(row.name)}</a></td>
-						<td><button class="btn btn-xs btn-default garage-open-doc" data-doctype="${row.doctype}" data-name="${frappe.utils.escape_html(row.name)}">${__("Open")}</button></td>
+						<td class="text-right"><button class="btn btn-xs btn-default garage-open-doc" data-doctype="${row.doctype}" data-name="${frappe.utils.escape_html(row.name)}">${__("Open")}</button></td>
 					</tr>`;
 				}
 				return `<tr>
@@ -126,14 +337,16 @@ frappe.ui.form.on("Service Request", {
 			.join("");
 
 		wrap.html(`
-			<div class="garage-commercial-panel" style="margin-bottom:12px;padding:12px;border:1px solid var(--border-color);border-radius:8px;background:var(--control-bg);">
-				<div style="margin-bottom:8px;"><b>${__("Billing Total")}:</b> ${bill}</div>
-				<table class="table table-bordered" style="margin:0;">
+			<div class="garage-panel" style="margin-bottom:12px;padding:12px;border:1px solid var(--border-color);border-radius:8px;background:var(--control-bg);">
+				<div style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+					<div><b>${__("Billing Total")}:</b> <span class="h5 text-primary" style="margin:0 0 0 6px;">${bill}</span></div>
+					<div>
+						${!frm.doc.sales_invoice ? `<button class="btn btn-xs btn-primary garage-create-invoice">${__("Create Sales Invoice")}</button>` : ""}
+					</div>
+				</div>
+				<table class="table table-bordered" style="margin:0;background:var(--card-bg);">
 					<tbody>${body}</tbody>
 				</table>
-				<p class="text-muted small" style="margin:8px 0 0;">
-					${__("Use Create → Quotation / Sales Order / Sales Invoice from the toolbar.")}
-				</p>
 			</div>
 		`);
 
@@ -142,40 +355,29 @@ frappe.ui.form.on("Service Request", {
 			const $btn = $(e.currentTarget);
 			frappe.set_route("Form", $btn.data("doctype"), $btn.data("name"));
 		});
+		wrap.find(".garage-create-invoice").on("click", (e) => {
+			e.preventDefault();
+			frappe.call({
+				method: "garage_management.api.service_request.create_sales_invoice",
+				args: { service_request: frm.doc.name },
+				freeze: true,
+				callback(r) {
+					if (!r.message) return;
+					after_commercial_created(frm, "Sales Invoice", r.message);
+				},
+			});
+		});
 	},
 
 	toggle_buttons(frm) {
 		if (frm.is_new()) return;
 
-		frm.add_custom_button(__("Load Job Type Defaults"), () => frm.trigger("load_job_type_defaults"), __("Actions"));
-
-		frm.add_custom_button(__("Create Inspection"), () => prompt_assignee(frm, "inspection"), __("Create"));
-		frm.add_custom_button(__("Create Repair Job"), () => prompt_assignee(frm, "repair_job"), __("Create"));
-
-		frm.add_custom_button(__("Job Report"), () => open_print("Service Request", frm.doc.name, "Job Report"), __("Print"));
-		frm.add_custom_button(__("Receiving Report"), () => open_print("Service Request", frm.doc.name, "Receiving Report"), __("Print"));
-		frm.add_custom_button(__("Inspection Report"), () => print_linked(frm, "Inspection", "Inspection Report"), __("Print"));
-		frm.add_custom_button(__("Job Repair Report"), () => print_linked(frm, "Repair Job", "Job Repair Report"), __("Print"));
-
-		if (frm.doc.quotation) {
-			frm.add_custom_button(__("Open Quotation"), () => {
-				frappe.set_route("Form", "Quotation", frm.doc.quotation);
-			}, __("Related"));
-		}
-		if (frm.doc.sales_order) {
-			frm.add_custom_button(__("Open Sales Order"), () => {
-				frappe.set_route("Form", "Sales Order", frm.doc.sales_order);
-			}, __("Related"));
-		}
-		if (frm.doc.sales_invoice) {
-			frm.add_custom_button(__("Open Sales Invoice"), () => {
-				frappe.set_route("Form", "Sales Invoice", frm.doc.sales_invoice);
-			}, __("Related"));
-		}
+		// --- CREATE MENU ---
+		frm.add_custom_button(__("Inspection"), () => prompt_assignee(frm, "inspection"), __("Create"));
 
 		if (!frm.doc.quotation) {
 			frm.add_custom_button(
-				__("Create Quotation"),
+				__("Quotation"),
 				() => {
 					frappe.call({
 						method: "garage_management.api.service_request.create_quotation",
@@ -191,9 +393,11 @@ frappe.ui.form.on("Service Request", {
 			);
 		}
 
+		frm.add_custom_button(__("Repair Job"), () => prompt_assignee(frm, "repair_job"), __("Create"));
+
 		if (frm.doc.quotation && !frm.doc.sales_order) {
 			frm.add_custom_button(
-				__("Create Sales Order"),
+				__("Sales Order"),
 				() => {
 					frappe.call({
 						method: "garage_management.api.service_request.create_sales_order",
@@ -209,9 +413,9 @@ frappe.ui.form.on("Service Request", {
 			);
 		}
 
-		if ((frm.doc.sales_order || frm.doc.quotation) && !frm.doc.sales_invoice) {
+		if (!frm.doc.sales_invoice) {
 			frm.add_custom_button(
-				__("Create Sales Invoice"),
+				__("Sales Invoice"),
 				() => {
 					frappe.call({
 						method: "garage_management.api.service_request.create_sales_invoice",
@@ -227,60 +431,101 @@ frappe.ui.form.on("Service Request", {
 			);
 		}
 
-		if (frm.doc.status === "Quoted" || frm.doc.status === "Awaiting Approval") {
+		// --- VIEW MENU ---
+		if (frm.doc.quotation) {
+			frm.add_custom_button(__("Quotation"), () => {
+				frappe.set_route("Form", "Quotation", frm.doc.quotation);
+			}, __("View"));
+		}
+		if (frm.doc.sales_order) {
+			frm.add_custom_button(__("Sales Order"), () => {
+				frappe.set_route("Form", "Sales Order", frm.doc.sales_order);
+			}, __("View"));
+		}
+		if (frm.doc.sales_invoice) {
+			frm.add_custom_button(__("Sales Invoice"), () => {
+				frappe.set_route("Form", "Sales Invoice", frm.doc.sales_invoice);
+			}, __("View"));
+		}
+		frm.add_custom_button(__("Inspections"), () => {
+			frappe.set_route("List", "Inspection", { service_request: frm.doc.name });
+		}, __("View"));
+		frm.add_custom_button(__("Repair Jobs"), () => {
+			frappe.set_route("List", "Repair Job", { service_request: frm.doc.name });
+		}, __("View"));
+
+		// --- ACTIONS MENU ---
+		if (frm.doc.status === "Quoted" || frm.doc.status === "Awaiting Approval" || frm.doc.quotation) {
 			frm.add_custom_button(__("Mark Customer Approved"), () => {
 				frappe.call({
 					method: "garage_management.api.service_request.mark_customer_approved",
 					args: { service_request: frm.doc.name },
 					freeze: true,
 					callback() {
-						frm._focus_commercial_tab = true;
+						frm._focus_tab = "repair_jobs_tab";
 						frm.reload_doc();
 					},
 				});
-			});
+			}, __("Actions"));
 		}
+
+		frm.add_custom_button(__("Sync Items from Inspection"), () => {
+			frappe.call({
+				method: "garage_management.api.service_request.sync_inspection_items_to_billing",
+				args: { service_request: frm.doc.name },
+				freeze: true,
+				callback() {
+					frm.reload_doc();
+				},
+			});
+		}, __("Actions"));
+
+		frm.add_custom_button(__("Load Job Type Defaults"), () => frm.trigger("load_job_type_defaults"), __("Actions"));
+
+		if (frm.doc.status === "In Progress" || frm.doc.status === "Testing") {
+			frm.add_custom_button(__("Mark Service Completed"), () => {
+				frappe.call({
+					method: "garage_management.api.service_request.mark_service_completed",
+					args: { service_request: frm.doc.name },
+					freeze: true,
+					callback() {
+						frm._focus_tab = "invoice_tab";
+						frm.reload_doc();
+					},
+				});
+			}, __("Actions"));
+		}
+
+		if (frm.doc.status === "Completed" || frm.doc.status === "Invoiced") {
+			frm.add_custom_button(__("Mark Delivered"), () => {
+				frappe.call({
+					method: "garage_management.api.service_request.mark_delivered",
+					args: { service_request: frm.doc.name },
+					freeze: true,
+					callback() {
+						frm.reload_doc();
+					},
+				});
+			}, __("Actions"));
+		}
+
+		// --- PRINT MENU ---
+		frm.add_custom_button(__("Job Report"), () => open_print("Service Request", frm.doc.name, "Job Report"), __("Print"));
+		frm.add_custom_button(__("Receiving Report"), () => open_print("Service Request", frm.doc.name, "Receiving Report"), __("Print"));
+		frm.add_custom_button(__("Inspection Report"), () => print_linked(frm, "Inspection", "Inspection Report"), __("Print"));
+		frm.add_custom_button(__("Job Repair Report"), () => print_linked(frm, "Repair Job", "Job Repair Report"), __("Print"));
 	},
 });
 
-function workshop_table_html(data) {
-	const inspRows = (data.inspections || [])
-		.map(
-			(d) => `<tr>
-				<td><a href="${frappe.utils.get_form_link("Inspection", d.name)}">${frappe.utils.escape_html(d.name)}</a></td>
-				<td>${frappe.utils.escape_html(d.status || "")}</td>
-				<td>${frappe.utils.escape_html(d.assigned_to || "")}</td>
-				<td><button class="btn btn-xs btn-default garage-open-doc" data-doctype="Inspection" data-name="${frappe.utils.escape_html(d.name)}">${__("Open")}</button>
-				<button class="btn btn-xs btn-default garage-print-doc" data-doctype="Inspection" data-name="${frappe.utils.escape_html(d.name)}" data-format="Inspection Report">${__("Print")}</button></td>
-			</tr>`
-		)
-		.join("");
-	const jobRows = (data.repair_jobs || [])
-		.map(
-			(d) => `<tr>
-				<td><a href="${frappe.utils.get_form_link("Repair Job", d.name)}">${frappe.utils.escape_html(d.name)}</a></td>
-				<td>${frappe.utils.escape_html(d.status || "")}</td>
-				<td>${frappe.utils.escape_html(d.assigned_to || "")}</td>
-				<td><button class="btn btn-xs btn-default garage-open-doc" data-doctype="Repair Job" data-name="${frappe.utils.escape_html(d.name)}">${__("Open")}</button>
-				<button class="btn btn-xs btn-default garage-print-doc" data-doctype="Repair Job" data-name="${frappe.utils.escape_html(d.name)}" data-format="Job Repair Report">${__("Print")}</button></td>
-			</tr>`
-		)
-		.join("");
-
-	return `
-		<div class="garage-commercial-panel" style="margin-bottom:12px;padding:12px;border:1px solid var(--border-color);border-radius:8px;background:var(--control-bg);">
-			<h5>${__("Inspections")}</h5>
-			<table class="table table-bordered" style="margin-bottom:16px;">
-				<thead><tr><th>${__("Inspection")}</th><th>${__("Status")}</th><th>${__("Assigned To")}</th><th></th></tr></thead>
-				<tbody>${inspRows || `<tr><td colspan="4" class="text-muted">${__("None yet")}</td></tr>`}</tbody>
-			</table>
-			<h5>${__("Repair Jobs")}</h5>
-			<table class="table table-bordered" style="margin:0;">
-				<thead><tr><th>${__("Repair Job")}</th><th>${__("Status")}</th><th>${__("Assigned To")}</th><th></th></tr></thead>
-				<tbody>${jobRows || `<tr><td colspan="4" class="text-muted">${__("None yet")}</td></tr>`}</tbody>
-			</table>
-		</div>
-	`;
+function status_color(status) {
+	const map = {
+		Draft: "gray",
+		"In Progress": "cyan",
+		Testing: "purple",
+		Completed: "green",
+		Cancelled: "red",
+	};
+	return map[status] || "blue";
 }
 
 function prompt_assignee(frm, kind) {
@@ -371,7 +616,7 @@ function after_commercial_created(frm, doctype, name) {
 		message: __("{0} {1} created", [doctype, name]),
 		indicator: "green",
 	});
-	frm._focus_commercial_tab = true;
+	frm._focus_tab = doctype === "Quotation" ? "quotation_tab" : "invoice_tab";
 	frm.reload_doc().then(() => {
 		frappe.msgprint({
 			title: __("{0} Created", [doctype]),
@@ -403,6 +648,15 @@ frappe.ui.form.on("Service Request Billing Item", {
 			frappe.model.set_value(cdt, cdn, "is_stock_item", r.is_stock_item);
 			calc_amount(frm, cdt, cdn);
 		});
+	},
+});
+
+frappe.ui.form.on("Service Job Photo", {
+	photos_add(frm, cdt, cdn) {
+		frappe.model.set_value(cdt, cdn, "stage", "Receiving");
+	},
+	form_render(frm, cdt, cdn) {
+		frappe.model.set_value(cdt, cdn, "stage", "Receiving");
 	},
 });
 

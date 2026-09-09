@@ -3,13 +3,11 @@
 
 import frappe
 from frappe import _
-from frappe.utils import flt, nowdate
+from frappe.utils import cint, flt, nowdate
 
 
 def _get_request(name):
 	doc = frappe.get_doc("Service Request", name)
-	if not doc.billing_items:
-		frappe.throw(_("Add Billing Items on the Service Request before creating commercial documents"))
 	return doc
 
 
@@ -30,10 +28,181 @@ def _item_row_from_billing(row):
 
 
 @frappe.whitelist()
+def get_customer_address_display(customer: str) -> str:
+	"""Fetch primary address or any linked address for a customer formatted for display."""
+	if not customer:
+		return ""
+
+	cust_data = frappe.db.get_value(
+		"Customer",
+		customer,
+		["customer_primary_address", "primary_address"],
+		as_dict=True,
+	)
+	if cust_data and cust_data.primary_address:
+		return cust_data.primary_address.strip()
+
+	address_name = cust_data.customer_primary_address if cust_data else None
+
+	if not address_name:
+		from frappe.contacts.doctype.address.address import get_default_address
+
+		address_name = get_default_address("Customer", customer, sort_key="is_primary_address")
+
+	if not address_name:
+		address_name = frappe.db.get_value(
+			"Dynamic Link",
+			{"link_doctype": "Customer", "link_name": customer, "parenttype": "Address"},
+			"parent",
+		)
+
+	if address_name:
+		from frappe.contacts.doctype.address.address import get_address_display
+
+		try:
+			display = get_address_display(address_name)
+			if display and display.strip():
+				return display.strip()
+		except Exception:
+			pass
+
+		addr = frappe.db.get_value(
+			"Address",
+			address_name,
+			["address_line1", "address_line2", "city", "state", "pincode", "country"],
+			as_dict=True,
+		)
+		if addr:
+			parts = [
+				addr.address_line1,
+				addr.address_line2,
+				addr.city,
+				addr.state,
+				addr.pincode,
+				addr.country,
+			]
+			return ", ".join([p.strip() for p in parts if p and p.strip()])
+
+	return ""
+
+
+@frappe.whitelist()
+def get_customer_contact_details(customer: str) -> dict:
+	"""Fetch contact details for a customer from customer creation/contact records."""
+	if not customer:
+		return {
+			"contact_details": "",
+			"contact_person": "",
+			"mobile_no": "",
+			"email_id": "",
+		}
+
+	cust = frappe.db.get_value(
+		"Customer",
+		customer,
+		["customer_primary_contact", "mobile_no", "email_id"],
+		as_dict=True,
+	) or {}
+
+	contact_name = cust.get("customer_primary_contact")
+
+	if not contact_name:
+		from frappe.contacts.doctype.contact.contact import get_default_contact
+
+		try:
+			contact_name = get_default_contact("Customer", customer)
+		except Exception:
+			contact_name = None
+
+	if not contact_name:
+		contacts = frappe.get_all(
+			"Dynamic Link",
+			filters={
+				"link_doctype": "Customer",
+				"link_name": customer,
+				"parenttype": "Contact",
+			},
+			pluck="parent",
+			limit=1,
+		)
+		if contacts:
+			contact_name = contacts[0]
+
+	contact_person = contact_name or ""
+	full_name = ""
+	mobile_no = cust.get("mobile_no") or ""
+	email_id = cust.get("email_id") or ""
+	phone = ""
+	designation = ""
+
+	if contact_name and frappe.db.exists("Contact", contact_name):
+		con = frappe.get_doc("Contact", contact_name)
+		full_name = (
+			con.get("full_name")
+			or " ".join(filter(None, [con.get("first_name"), con.get("last_name")]))
+		)
+		mobile_no = con.get("mobile_no") or mobile_no
+		if not mobile_no and hasattr(con, "phone_nos"):
+			for p in con.phone_nos or []:
+				if p.get("phone"):
+					mobile_no = p.get("phone")
+					break
+
+		email_id = con.get("email_id") or email_id
+		if not email_id and hasattr(con, "email_ids"):
+			for e in con.email_ids or []:
+				if e.get("email_id"):
+					email_id = e.get("email_id")
+					break
+
+		phone = con.get("phone") or ""
+		designation = con.get("designation") or ""
+
+	lines = []
+	if full_name:
+		line = full_name
+		if designation:
+			line += f" ({designation})"
+		lines.append(line)
+	if mobile_no:
+		lines.append(f"Mobile: {mobile_no}")
+	if phone and phone != mobile_no:
+		lines.append(f"Phone: {phone}")
+	if email_id:
+		lines.append(f"Email: {email_id}")
+
+	contact_display = "\n".join(lines).strip()
+
+	return {
+		"contact_details": contact_display,
+		"contact_person": contact_person,
+		"mobile_no": mobile_no,
+		"email_id": email_id,
+	}
+
+
+@frappe.whitelist()
+def get_customer_contact_and_address(customer: str) -> dict:
+	"""Combined helper to fetch both contact details and formatted address for a customer."""
+	addr_display = get_customer_address_display(customer)
+	contact_info = get_customer_contact_details(customer)
+	contact_info["address_display"] = addr_display
+	return contact_info
+
+
+@frappe.whitelist()
 def create_quotation(service_request):
 	req = _get_request(service_request)
 	if req.quotation and frappe.db.exists("Quotation", req.quotation):
 		frappe.throw(_("Quotation {0} already linked").format(req.quotation))
+
+	# If billing items is empty, try to auto-sync from inspection
+	if not req.billing_items:
+		sync_inspection_items_to_billing(service_request)
+		req.reload()
+
+	if not req.billing_items:
+		frappe.throw(_("Add Billing Items on the Service Request before creating Quotation"))
 
 	settings = _settings()
 	quotation = frappe.new_doc("Quotation")
@@ -56,26 +225,110 @@ def create_quotation(service_request):
 	if quotation.taxes_and_charges:
 		quotation.set_taxes()
 
+	# Create as Draft (docstatus = 0) so user can review and edit
 	quotation.insert(ignore_permissions=True)
-	quotation.submit()
 
 	req.db_set({"quotation": quotation.name, "status": "Quoted"}, update_modified=True)
-	frappe.msgprint(_("Quotation {0} created").format(quotation.name), indicator="green", alert=True)
+	frappe.msgprint(_("Quotation {0} created as Draft").format(quotation.name), indicator="green", alert=True)
 	return quotation.name
 
 
 @frappe.whitelist()
 def mark_customer_approved(service_request):
 	req = frappe.get_doc("Service Request", service_request)
+	if req.quotation and frappe.db.exists("Quotation", req.quotation):
+		qdoc = frappe.get_doc("Quotation", req.quotation)
+		if qdoc.docstatus == 0:
+			try:
+				qdoc.flags.ignore_permissions = True
+				qdoc.submit()
+			except Exception:
+				pass
+
 	updates = {"status": "In Progress"}
-
-	if req.quotation and not req.sales_order:
-		so_name = create_sales_order(service_request)
-		updates["sales_order"] = so_name
-
 	req.db_set(updates, update_modified=True)
-	frappe.msgprint(_("Customer approved — request is In Progress"), indicator="green", alert=True)
+	frappe.msgprint(_("Customer approved — Service Request is In Progress"), indicator="green", alert=True)
 	return req.name
+
+
+@frappe.whitelist()
+def mark_service_completed(service_request):
+	req = frappe.get_doc("Service Request", service_request)
+	req.db_set("status", "Completed", update_modified=True)
+	frappe.msgprint(_("Service Request marked as Completed"), indicator="green", alert=True)
+	return req.name
+
+
+@frappe.whitelist()
+def mark_delivered(service_request):
+	req = frappe.get_doc("Service Request", service_request)
+	req.db_set("status", "Delivered", update_modified=True)
+	frappe.msgprint(_("Service Request marked as Delivered"), indicator="green", alert=True)
+	return req.name
+
+
+@frappe.whitelist()
+def sync_inspection_items_to_billing(service_request):
+	req = frappe.get_doc("Service Request", service_request)
+	inspections = frappe.get_all(
+		"Inspection",
+		filters={"service_request": service_request, "status": ["!=", "Cancelled"]},
+		pluck="name",
+	)
+	if not inspections:
+		return 0
+
+	existing_items = {row.item_code for row in req.billing_items if row.item_code}
+	added = 0
+	price_list = frappe.db.get_single_value("Service Job Settings", "default_price_list")
+	default_wh = frappe.db.get_single_value("Service Job Settings", "default_warehouse")
+
+	for insp_name in inspections:
+		insp = frappe.get_doc("Inspection", insp_name)
+		for row in insp.key_replacement_items or []:
+			if not row.item_code or row.item_code in existing_items:
+				continue
+			item_details = frappe.db.get_value(
+				"Item",
+				row.item_code,
+				["item_name", "description", "is_stock_item", "standard_rate"],
+				as_dict=True,
+			)
+			if not item_details:
+				continue
+
+			rate = item_details.standard_rate or 0
+			if price_list:
+				pl_rate = frappe.db.get_value(
+					"Item Price",
+					{"item_code": row.item_code, "price_list": price_list, "selling": 1},
+					"price_list_rate",
+				)
+				if pl_rate:
+					rate = pl_rate
+
+			req.append(
+				"billing_items",
+				{
+					"item_code": row.item_code,
+					"item_name": item_details.item_name,
+					"description": item_details.description,
+					"qty": 1,
+					"rate": rate,
+					"amount": rate,
+					"warehouse": default_wh if item_details.is_stock_item else None,
+					"is_stock_item": item_details.is_stock_item,
+				},
+			)
+			existing_items.add(row.item_code)
+			added += 1
+
+	if added > 0:
+		req.calculate_billing_total()
+		req.save(ignore_permissions=True)
+		frappe.msgprint(_("Added {0} item(s) from Inspection to Billing Items").format(added), indicator="green", alert=True)
+
+	return added
 
 
 @frappe.whitelist()
@@ -88,6 +341,12 @@ def create_sales_order(service_request):
 		frappe.throw(_("Create a Quotation first"))
 
 	from erpnext.selling.doctype.quotation.quotation import make_sales_order
+
+	# Ensure quotation is submitted before making Sales Order
+	qdoc = frappe.get_doc("Quotation", req.quotation)
+	if qdoc.docstatus == 0:
+		qdoc.flags.ignore_permissions = True
+		qdoc.submit()
 
 	so = make_sales_order(req.quotation)
 	if hasattr(so, "service_request"):
@@ -108,11 +367,55 @@ def create_sales_invoice(service_request):
 	settings = _settings()
 	si = None
 
-	if req.sales_order:
+	if req.sales_order and frappe.db.exists("Sales Order", req.sales_order):
 		from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
-
 		si = make_sales_invoice(req.sales_order)
-	elif req.quotation:
+	elif req.quotation and frappe.db.exists("Quotation", req.quotation):
+		q_doc = frappe.get_doc("Quotation", req.quotation)
+		si = frappe.new_doc("Sales Invoice")
+		si.customer = req.customer
+		si.company = req.company
+		si.posting_date = nowdate()
+		if q_doc.selling_price_list or settings.default_price_list:
+			si.selling_price_list = q_doc.selling_price_list or settings.default_price_list
+		if q_doc.taxes_and_charges or settings.default_taxes_and_charges:
+			si.taxes_and_charges = q_doc.taxes_and_charges or settings.default_taxes_and_charges
+
+		if q_doc.items:
+			for item in q_doc.items:
+				si.append(
+					"items",
+					{
+						"item_code": item.item_code,
+						"item_name": item.item_name,
+						"description": item.description,
+						"qty": item.qty,
+						"rate": item.rate,
+						"uom": item.uom or frappe.db.get_value("Item", item.item_code, "stock_uom") or "Nos",
+						"warehouse": getattr(item, "warehouse", None),
+					},
+				)
+		elif req.billing_items:
+			for row in req.billing_items:
+				si.append("items", _item_row_from_billing(row))
+		else:
+			frappe.throw(_("Add items to Quotation or Service Request before creating Sales Invoice"))
+
+		if q_doc.taxes:
+			for tax in q_doc.taxes:
+				si.append(
+					"taxes",
+					{
+						"charge_type": tax.charge_type,
+						"account_head": tax.account_head,
+						"description": tax.description,
+						"rate": tax.rate,
+						"tax_amount": tax.tax_amount,
+					},
+				)
+		elif si.taxes_and_charges:
+			si.set_taxes()
+	elif req.billing_items:
 		si = frappe.new_doc("Sales Invoice")
 		si.customer = req.customer
 		si.company = req.company
@@ -126,8 +429,9 @@ def create_sales_invoice(service_request):
 		if si.taxes_and_charges:
 			si.set_taxes()
 	else:
-		frappe.throw(_("Create Quotation or Sales Order first"))
+		frappe.throw(_("Create Quotation or add Billing Items first"))
 
+	# Inventory: deduct stock on invoice submit for stock items
 	si.update_stock = 1
 	default_wh = settings.default_warehouse
 	for item in si.items:
@@ -162,9 +466,79 @@ def cint_item_stock(item_code):
 	return frappe.db.get_value("Item", item_code, "is_stock_item")
 
 
+def sync_job_sub_statuses(service_request):
+	"""Calculate and store aggregated inspection_status and repair_status on Service Request."""
+	if not service_request or not frappe.db.exists("Service Request", service_request):
+		return "Pending", "Pending"
+
+	# Calculate Inspection Status
+	inspections = frappe.get_all(
+		"Inspection",
+		filters={"service_request": service_request},
+		fields=["status"],
+		order_by="creation desc",
+	)
+	if not inspections:
+		inspection_status = "Pending"
+	else:
+		active = [i.status for i in inspections if i.status != "Cancelled"]
+		if any(s == "In Progress" for s in active):
+			inspection_status = "In Progress"
+		elif active and all(s == "Completed" for s in active):
+			inspection_status = "Completed"
+		elif any(s == "Draft" for s in active):
+			inspection_status = "Draft"
+		elif active:
+			inspection_status = active[0]
+		elif inspections:
+			inspection_status = inspections[0].status
+		else:
+			inspection_status = "Pending"
+
+	# Calculate Repair Status
+	repairs = frappe.get_all(
+		"Repair Job",
+		filters={"service_request": service_request},
+		fields=["status"],
+		order_by="creation desc",
+	)
+	if not repairs:
+		repair_status = "Pending"
+	else:
+		active = [r.status for r in repairs if r.status != "Cancelled"]
+		if any(s == "In Progress" for s in active):
+			repair_status = "In Progress"
+		elif any(s == "Testing" for s in active):
+			repair_status = "Testing"
+		elif active and all(s == "Completed" for s in active):
+			repair_status = "Completed"
+		elif any(s == "Draft" for s in active):
+			repair_status = "Draft"
+		elif active:
+			repair_status = active[0]
+		elif repairs:
+			repair_status = repairs[0].status
+		else:
+			repair_status = "Pending"
+
+	frappe.db.set_value(
+		"Service Request",
+		service_request,
+		{
+			"inspection_status": inspection_status,
+			"repair_status": repair_status,
+		},
+		update_modified=False,
+	)
+	return inspection_status, repair_status
+
+
 @frappe.whitelist()
 def get_workshop_docs(service_request):
+	insp_status, rep_status = sync_job_sub_statuses(service_request)
 	return {
+		"inspection_status": insp_status,
+		"repair_status": rep_status,
 		"inspections": frappe.get_all(
 			"Inspection",
 			filters={"service_request": service_request},

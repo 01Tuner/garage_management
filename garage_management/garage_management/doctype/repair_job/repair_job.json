@@ -10,6 +10,7 @@
   "naming_series",
   "service_request",
   "inspection",
+  "inspection_status",
   "status",
   "column_break_header",
   "assigned_to",
@@ -20,6 +21,8 @@
   "customer_name",
   "work_section",
   "work_notes",
+  "photos_section",
+  "photos",
   "qc_section",
   "qc_items"
  ],
@@ -49,6 +52,15 @@
    "in_standard_filter": 1,
    "label": "Inspection",
    "options": "Inspection"
+  },
+  {
+   "fetch_from": "inspection.status",
+   "fieldname": "inspection_status",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Inspection Status",
+   "read_only": 1
   },
   {
    "default": "Draft",
@@ -121,6 +133,17 @@
    "label": "Work Notes"
   },
   {
+   "fieldname": "photos_section",
+   "fieldtype": "Section Break",
+   "label": "After Repair Photos"
+  },
+  {
+   "fieldname": "photos",
+   "fieldtype": "Table",
+   "label": "After Repair Photos",
+   "options": "Service Job Photo"
+  },
+  {
    "fieldname": "qc_section",
    "fieldtype": "Section Break",
    "label": "Quality Checklist"
@@ -134,7 +157,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-08-16 22:00:00.000000",
+ "modified": "2026-09-07 23:00:00.000000",
  "modified_by": "Administrator",
  "module": "Garage Management",
  "name": "Repair Job",
