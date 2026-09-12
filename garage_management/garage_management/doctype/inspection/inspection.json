@@ -78,12 +78,6 @@
    "read_only": 1
   },
   {
-   "fieldname": "letter_head",
-   "fieldtype": "Link",
-   "label": "Letter Head",
-   "options": "Letter Head"
-  },
-  {
    "fieldname": "customer_section",
    "fieldtype": "Section Break",
    "label": "Customer"

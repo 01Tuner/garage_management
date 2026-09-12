@@ -11,3 +11,4 @@ garage_management.patches.v1_0.apply_migrated_inspection_notes
 garage_management.patches.v1_0.split_service_job_to_request
 garage_management.patches.v1_0.seed_key_replacement_items
 garage_management.patches.v1_0.make_service_request_non_submittable
+garage_management.patches.v1_0.set_default_letter_head_in_settings

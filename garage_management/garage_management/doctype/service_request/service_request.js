@@ -21,6 +21,9 @@ frappe.ui.form.on("Service Request", {
 	},
 
 	refresh(frm) {
+		if (frm.doc.__onload?.default_letter_head) {
+			frm.doc.letter_head = frm.doc.__onload.default_letter_head;
+		}
 		frm.set_df_property("contact_details", "read_only", 1);
 		frm.set_df_property("customer_address", "read_only", 1);
 		frm.set_df_property("inspection_status", "read_only", 1);
@@ -609,7 +612,7 @@ function prompt_assignee(frm, kind) {
 
 function open_print(doctype, name, format) {
 	const letterhead =
-		(cur_frm && cur_frm.doc && cur_frm.doc.letter_head) ||
+		(cur_frm && cur_frm.doc && (cur_frm.doc.letter_head || cur_frm.doc.__onload?.default_letter_head)) ||
 		frappe.defaults.get_default("letter_head") ||
 		"";
 	let url =

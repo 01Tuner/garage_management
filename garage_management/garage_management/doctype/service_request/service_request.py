@@ -10,6 +10,25 @@ from garage_management.permissions import is_garage_technician_only
 
 
 class ServiceRequest(Document):
+	def onload(self):
+		from garage_management.garage_management.doctype.service_job_settings.service_job_settings import (
+			get_default_letter_head,
+		)
+
+		lh = get_default_letter_head()
+		if lh:
+			self.set_onload("default_letter_head", lh)
+			self.letter_head = lh
+
+	def before_print(self, settings=None):
+		from garage_management.garage_management.doctype.service_job_settings.service_job_settings import (
+			get_default_letter_head,
+		)
+
+		lh = get_default_letter_head()
+		if lh:
+			self.letter_head = lh
+
 	def validate(self):
 		self.set_defaults()
 		self.calculate_billing_total()
@@ -52,12 +71,6 @@ class ServiceRequest(Document):
 		if not self.get("warranty_days"):
 			settings = frappe.get_cached_doc("Service Job Settings")
 			self.warranty_days = cint(settings.default_warranty_days) or 30
-
-		if not self.get("letter_head"):
-			self.letter_head = (
-				frappe.db.get_value("Letter Head", {"is_default": 1, "disabled": 0}, "name")
-				or frappe.db.get_value("Letter Head", {"is_default": 1}, "name")
-			)
 
 	def enforce_photo_stages(self):
 		"""Ensure all photos in Service Request are tagged as Receiving stage."""

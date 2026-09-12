@@ -106,12 +106,6 @@
    "reqd": 1
   },
   {
-   "fieldname": "letter_head",
-   "fieldtype": "Link",
-   "label": "Letter Head",
-   "options": "Letter Head"
-  },
-  {
    "default": "Now",
    "fieldname": "received_date",
    "fieldtype": "Datetime",

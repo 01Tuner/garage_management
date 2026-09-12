@@ -6,6 +6,7 @@
  "field_order": [
   "company",
   "default_warehouse",
+  "default_letter_head",
   "column_break_1",
   "default_price_list",
   "default_taxes_and_charges",
@@ -29,6 +30,12 @@
    "label": "Default Selling Warehouse",
    "options": "Warehouse",
    "description": "Used for Sales Invoice update_stock on spare parts"
+  },
+  {
+   "fieldname": "default_letter_head",
+   "fieldtype": "Link",
+   "label": "Default Letter Head",
+   "options": "Letter Head"
   },
   {
    "fieldname": "column_break_1",

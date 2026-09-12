@@ -8,8 +8,26 @@ from frappe.utils import cint, flt
 
 from garage_management.permissions import assigned_doc_has_permission, assigned_doc_query_conditions
 
-
 class RepairJob(Document):
+	def onload(self):
+		from garage_management.garage_management.doctype.service_job_settings.service_job_settings import (
+			get_default_letter_head,
+		)
+
+		lh = get_default_letter_head()
+		if lh:
+			self.set_onload("default_letter_head", lh)
+			self.letter_head = lh
+
+	def before_print(self, settings=None):
+		from garage_management.garage_management.doctype.service_job_settings.service_job_settings import (
+			get_default_letter_head,
+		)
+
+		lh = get_default_letter_head()
+		if lh:
+			self.letter_head = lh
+
 	def before_insert(self):
 		if not self.assigned_to:
 			self.assigned_to = frappe.session.user
@@ -22,14 +40,6 @@ class RepairJob(Document):
 		self.calculate_spare_parts_totals()
 		self.validate_service_request_status()
 		self.validate_status_transition()
-		if not self.get("letter_head"):
-			if self.get("service_request"):
-				self.letter_head = frappe.db.get_value("Service Request", self.service_request, "letter_head")
-			if not self.get("letter_head"):
-				self.letter_head = (
-					frappe.db.get_value("Letter Head", {"is_default": 1, "disabled": 0}, "name")
-					or frappe.db.get_value("Letter Head", {"is_default": 1}, "name")
-				)
 		if self.inspection:
 			parent = frappe.db.get_value("Inspection", self.inspection, "service_request")
 			if parent and parent != self.service_request:

@@ -13,6 +13,9 @@ frappe.ui.form.on("Repair Job", {
 
 	refresh(frm) {
 		frm.set_df_property("inspection_status", "read_only", 1);
+		if (frm.doc.__onload?.default_letter_head) {
+			frm.doc.letter_head = frm.doc.__onload.default_letter_head;
+		}
 		frm.trigger("render_inspection_tab");
 
 		if (frm.is_new()) return;
@@ -108,7 +111,7 @@ frappe.ui.form.on("Repair Job", {
 
 		// --- PRINT MENU ---
 		frm.add_custom_button(__("Job Repair Report"), () => {
-			const lh = frm.doc.letter_head || frappe.defaults.get_default("letter_head") || "";
+			const lh = frm.doc.letter_head || frm.doc.__onload?.default_letter_head || frappe.defaults.get_default("letter_head") || "";
 			let url =
 				"/printview?doctype=" +
 				encodeURIComponent("Repair Job") +
@@ -407,7 +410,7 @@ frappe.ui.form.on("Repair Job", {
 					wrap.find(".garage-print-insp").on("click", (e) => {
 						e.preventDefault();
 						const insp_name = $(e.currentTarget).data("name");
-						const lh = frm.doc.letter_head || frappe.defaults.get_default("letter_head") || "";
+						const lh = frm.doc.letter_head || frm.doc.__onload?.default_letter_head || frappe.defaults.get_default("letter_head") || "";
 						let url =
 							"/printview?doctype=Inspection&name=" +
 							encodeURIComponent(insp_name) +
@@ -439,6 +442,7 @@ frappe.ui.form.on("Repair Job", {
 						e.preventDefault();
 						if (!data.key_replacement_items || !data.key_replacement_items.length) return;
 
+						const default_wh = await frappe.db.get_single_value("Service Job Settings", "default_warehouse");
 						let added_count = 0;
 						const existing = new Set((frm.doc.spare_parts || []).map((r) => r.item_code));
 
@@ -450,7 +454,7 @@ frappe.ui.form.on("Repair Job", {
 								"stock_uom",
 								"standard_rate",
 								"description",
-								"default_warehouse",
+								"is_stock_item",
 							]);
 							let details = item_info?.message || {};
 
@@ -462,14 +466,15 @@ frappe.ui.form.on("Repair Job", {
 							row.rate = flt(details.standard_rate || 0);
 							row.amount = flt(row.qty) * flt(row.rate);
 							row.description = details.description || "";
-							if (details.default_warehouse) {
-								row.warehouse = details.default_warehouse;
+							if (details.is_stock_item && default_wh) {
+								row.warehouse = default_wh;
 							}
 							existing.add(item.item_code);
 							added_count++;
 						}
 
 						if (added_count > 0) {
+							frm.dirty();
 							recalculate_spare_parts(frm);
 							frappe.show_alert({
 								message: __("{0} replacement part(s) added to Spare Parts table", [added_count]),
@@ -477,7 +482,7 @@ frappe.ui.form.on("Repair Job", {
 							});
 						} else {
 							frappe.show_alert({
-								message: __("All replacement parts from this inspection are already in the Spare Parts table"),
+								message: __("All replacement parts already present in table"),
 								indicator: "orange",
 							});
 						}
