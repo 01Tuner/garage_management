@@ -55,24 +55,414 @@
 	gap: 12px;
 }
 
-.kanban-card .garage-kanban-amount {
-	font-weight: 600;
-	color: var(--text-color) !important;
-	margin-top: 2px;
+/* Rich Service Request Kanban Cards */
+.kanban-card-wrapper [data-doctype="Service Request"] .kanban-card,
+.kanban [data-doctype="Service Request"] .kanban-card,
+.kanban-card {
+	border-radius: 10px;
+	border: 1px solid var(--border-color, #e2e8f0);
+	transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-.kanban-card .garage-kanban-complaint {
-	white-space: normal !important;
+.kanban-card:has(.garage-kanban-card) {
+	padding: 10px 12px !important;
+	border-radius: 10px;
+	background: var(--card-bg, #ffffff);
+	border: 1px solid var(--border-color, #e2e8f0);
+}
+
+.kanban-card:hover {
+	box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+	border-color: var(--border-color-dark, #cbd5e1);
+}
+
+.kanban-card .garage-kanban-card {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	width: 100%;
+	font-size: 12px;
 	line-height: 1.35;
-	margin-top: 4px;
-	max-height: 3.8em;
-	overflow: hidden;
+	color: var(--text-color, #1e293b);
 }
 
-.kanban-card .garage-kanban-related {
+/* Card Header */
+.garage-kcard-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 6px;
+	padding-bottom: 6px;
+	border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+
+.garage-kcard-id {
+	font-weight: 700;
+	font-size: 11.5px;
+	font-family: var(--font-stack-monospace, monospace);
+	color: var(--primary, #2563eb) !important;
+	background: rgba(37, 99, 235, 0.08);
+	padding: 2px 7px;
+	border-radius: 5px;
+	border: 1px solid rgba(37, 99, 235, 0.2);
+	text-decoration: none !important;
+	letter-spacing: 0.02em;
+	white-space: nowrap;
+}
+.garage-kcard-id:hover {
+	background: rgba(37, 99, 235, 0.16);
+	text-decoration: none !important;
+}
+
+.garage-kcard-header-right {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+/* Priority Pills */
+.garage-kpill {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 7px;
+	border-radius: 9999px;
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+.garage-kpill .kdot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	display: inline-block;
+}
+.garage-kpill-urgent {
+	background: rgba(239, 68, 68, 0.12);
+	color: #ef4444;
+	border: 1px solid rgba(239, 68, 68, 0.25);
+}
+.garage-kpill-urgent .kdot { background: #ef4444; }
+
+.garage-kpill-high {
+	background: rgba(245, 158, 11, 0.12);
+	color: #d97706;
+	border: 1px solid rgba(245, 158, 11, 0.25);
+}
+.garage-kpill-high .kdot { background: #f59e0b; }
+
+.garage-kpill-normal {
+	background: rgba(59, 130, 246, 0.12);
+	color: #2563eb;
+	border: 1px solid rgba(59, 130, 246, 0.2);
+}
+.garage-kpill-normal .kdot { background: #3b82f6; }
+
+.garage-kpill-low {
+	background: rgba(107, 114, 128, 0.12);
+	color: #6b7280;
+	border: 1px solid rgba(107, 114, 128, 0.2);
+}
+.garage-kpill-low .kdot { background: #9ca3af; }
+
+/* Customer Row (Full Width, No Truncation) */
+.garage-kcard-customer-row {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	margin-top: 1px;
+}
+
+.garage-kcard-cust-name {
+	font-weight: 700;
+	font-size: 13px;
+	color: var(--heading-color, var(--text-color, #0f172a)) !important;
+	text-decoration: none !important;
+	width: 100%;
+	line-height: 1.35;
+	word-break: break-word;
+	overflow-wrap: break-word;
+}
+.garage-kcard-cust-name:hover {
+	color: var(--primary, #2563eb) !important;
+}
+
+/* Contact & Date Subrow (2 Columns) */
+.garage-kcard-meta-subrow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 6px;
+	margin-top: 1px;
+}
+.garage-kcard-meta-subrow:empty {
+	display: none;
+}
+
+.garage-kcard-phone {
+	display: inline-flex;
+	align-items: center;
+	font-size: 11px;
+	font-weight: 500;
+	color: var(--text-muted, #64748b) !important;
+	background: var(--control-bg, #f1f5f9);
+	padding: 2px 7px;
+	border-radius: 4px;
+	text-decoration: none !important;
+	white-space: nowrap;
+	border: 1px solid var(--border-color, #e2e8f0);
+	transition: background 0.12s ease, color 0.12s ease;
+}
+.garage-kcard-phone:hover {
+	background: var(--fg-hover-color, #e2e8f0);
+	color: var(--primary, #2563eb) !important;
+}
+
+.garage-kcard-date {
+	font-size: 11px;
+	color: var(--text-muted, #64748b);
+	white-space: nowrap;
+	display: inline-flex;
+	align-items: center;
+	margin-left: auto;
+}
+
+/* Tags (Job Type & Vehicle) */
+.garage-kcard-tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin-top: 1px;
+}
+.garage-ktag {
+	display: inline-flex;
+	align-items: center;
+	font-size: 11px;
+	font-weight: 500;
+	padding: 2px 6px;
+	border-radius: 4px;
+	max-width: 100%;
+}
+.garage-ktag-job {
+	background: rgba(14, 165, 233, 0.08);
+	border: 1px solid rgba(14, 165, 233, 0.25);
+	color: #0284c7;
+}
+.garage-ktag-vehicle {
+	background: rgba(99, 102, 241, 0.08);
+	border: 1px solid rgba(99, 102, 241, 0.25);
+	color: #4f46e5;
+}
+
+/* Complaint Box */
+.garage-kcard-complaint {
+	font-size: 11.5px;
+	color: var(--text-muted, #64748b);
+	background: var(--control-bg, rgba(0, 0, 0, 0.025));
+	border-left: 3px solid var(--primary, #3b82f6);
+	padding: 5px 8px;
+	border-radius: 0 5px 5px 0;
+	line-height: 1.35;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	word-break: break-word;
+}
+
+/* Operations Status Badges */
+.garage-kcard-ops {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 5px;
 	margin-top: 2px;
 }
+.garage-kbadge {
+	display: inline-flex;
+	align-items: center;
+	padding: 2px 7px;
+	border-radius: 4px;
+	font-size: 10.5px;
+	font-weight: 600;
+	letter-spacing: 0.01em;
+}
+.garage-kbadge-success {
+	background: rgba(34, 197, 94, 0.12);
+	color: #16a34a;
+	border: 1px solid rgba(34, 197, 94, 0.25);
+}
+.garage-kbadge-warning {
+	background: rgba(249, 115, 22, 0.12);
+	color: #ea580c;
+	border: 1px solid rgba(249, 115, 22, 0.25);
+}
+.garage-kbadge-info {
+	background: rgba(168, 85, 247, 0.12);
+	color: #9333ea;
+	border: 1px solid rgba(168, 85, 247, 0.25);
+}
+.garage-kbadge-muted {
+	background: var(--control-bg, #f1f5f9);
+	color: var(--text-muted, #64748b);
+	border: 1px solid var(--border-color, #e2e8f0);
+}
 
-.kanban-card .garage-kanban-related a {
+/* Commercial Footer */
+.garage-kcard-commercial {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 5px;
+	margin-top: 4px;
+	padding-top: 6px;
+	border-top: 1px dashed var(--border-color, #e2e8f0);
+}
+.garage-kcard-bill-pill {
+	font-size: 11.5px;
+	font-weight: 700;
+	color: #16a34a;
+	background: rgba(34, 197, 94, 0.1);
+	border: 1px solid rgba(34, 197, 94, 0.25);
+	padding: 2px 7px;
+	border-radius: 4px;
+	white-space: nowrap;
+}
+.garage-kcard-doc-pill {
+	font-size: 10.5px;
 	font-weight: 500;
+	padding: 2px 7px;
+	border-radius: 4px;
+	background: var(--control-bg, #f1f5f9);
+	color: var(--text-color, #334155) !important;
+	text-decoration: none !important;
+	border: 1px solid var(--border-color, #e2e8f0);
+	transition: background 0.12s ease, border-color 0.12s ease;
+	white-space: nowrap;
+}
+.garage-kcard-doc-pill:hover {
+	background: var(--fg-hover-color, #e2e8f0);
+	color: var(--primary, #2563eb) !important;
+}
+.garage-kcard-doc-inv {
+	background: rgba(34, 197, 94, 0.08);
+	border-color: rgba(34, 197, 94, 0.3);
+	color: #15803d !important;
+}
+
+/* Card Meta Footer (Assignees & Like) */
+.garage-kcard-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding-top: 4px;
+	margin-top: 2px;
+	min-height: 22px;
+	border-top: 1px dashed var(--border-color, #e2e8f0);
+}
+.garage-kcard-footer:empty {
+	display: none;
+}
+.garage-kcard-footer .kanban-assignments {
+	display: flex;
+	align-items: center;
+	margin-right: auto;
+}
+.garage-kcard-footer .like-action {
+	margin-left: auto;
+}
+
+/* Dashboard Links Section */
+.garage-dashboard-links-section {
+	margin-top: 36px;
+	margin-bottom: 48px;
+	width: 100%;
+	padding: 0 4px;
+}
+
+.garage-dashboard-links-section .garage-links-header {
+	font-weight: 700;
+	font-size: 1.15rem;
+	letter-spacing: 0.02em;
+	margin-bottom: 18px;
+	color: var(--heading-color, var(--text-color));
+}
+
+.garage-dashboard-links-grid {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 24px;
+}
+
+@media (max-width: 1200px) {
+	.garage-dashboard-links-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 640px) {
+	.garage-dashboard-links-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+.garage-dashboard-links-grid .widget.links-widget-box {
+	border: none !important;
+	box-shadow: none !important;
+	background: transparent !important;
+	padding: 0 !important;
+}
+
+.garage-dashboard-links-grid .widget-head {
+	margin-bottom: 12px;
+	padding: 0;
+	border: none;
+}
+
+.garage-dashboard-links-grid .widget-title {
+	font-weight: 700;
+	font-size: 0.95rem;
+	color: var(--heading-color, var(--text-color));
+}
+
+.garage-dashboard-links-grid .widget-body {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.garage-dashboard-links-grid .link-item {
+	display: flex;
+	align-items: center;
+	padding: 6px 8px;
+	margin: 0 -8px;
+	border-radius: 6px;
+	color: var(--text-color);
+	text-decoration: none !important;
+	font-size: 0.88rem;
+	transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.garage-dashboard-links-grid .link-item:hover {
+	background: var(--fg-hover-color, rgba(0, 0, 0, 0.04));
+	color: var(--primary, #2563eb);
+}
+
+.garage-dashboard-links-grid .link-content {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+}
+
+.garage-dashboard-links-grid .link-content .icon,
+.garage-dashboard-links-grid .link-arrow {
+	color: var(--text-muted, #94a3b8);
+	transition: transform 0.12s ease, color 0.12s ease;
+}
+
+.garage-dashboard-links-grid .link-item:hover .link-content .icon,
+.garage-dashboard-links-grid .link-item:hover .link-arrow {
+	color: var(--primary, #2563eb);
+	transform: translate(1px, -1px);
 }

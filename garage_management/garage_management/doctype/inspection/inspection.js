@@ -107,16 +107,15 @@ frappe.ui.form.on("Inspection", {
 
 		// --- PRINT MENU ---
 		frm.add_custom_button(__("Inspection Report"), () => {
-			window.open(
-				frappe.urllib.get_full_url(
-					"/printview?doctype=Inspection&name=" +
-						encodeURIComponent(frm.doc.name) +
-						"&format=" +
-						encodeURIComponent("Inspection Report") +
-						"&no_letterhead=0"
-				),
-				"_blank"
-			);
+			const lh = frm.doc.letter_head || frappe.defaults.get_default("letter_head") || "";
+			let url =
+				"/printview?doctype=Inspection&name=" +
+				encodeURIComponent(frm.doc.name) +
+				"&format=" +
+				encodeURIComponent("Inspection Report") +
+				"&no_letterhead=0";
+			if (lh) url += "&letterhead=" + encodeURIComponent(lh);
+			window.open(frappe.urllib.get_full_url(url), "_blank");
 		}, __("Print"));
 	},
 

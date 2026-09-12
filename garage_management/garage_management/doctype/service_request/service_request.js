@@ -180,6 +180,7 @@ frappe.ui.form.on("Service Request", {
 					</div>
 					<div>
 						<button class="btn btn-xs btn-default garage-open-doc" data-doctype="Quotation" data-name="${frappe.utils.escape_html(frm.doc.quotation)}">${__("Open Quotation")}</button>
+						<button class="btn btn-xs btn-default text-danger garage-unlink-quote" data-name="${frappe.utils.escape_html(frm.doc.quotation)}" style="margin-left:4px;">${__("Unlink")}</button>
 					</div>
 				</div>
 			`;
@@ -212,6 +213,10 @@ frappe.ui.form.on("Service Request", {
 			e.preventDefault();
 			const $btn = $(e.currentTarget);
 			frappe.set_route("Form", $btn.data("doctype"), $btn.data("name"));
+		});
+		wrap.find(".garage-unlink-quote").on("click", (e) => {
+			e.preventDefault();
+			frm.events.confirm_and_unlink(frm, "Quotation", frm.doc.quotation);
 		});
 		wrap.find(".garage-create-quote").on("click", (e) => {
 			e.preventDefault();
@@ -312,7 +317,7 @@ frappe.ui.form.on("Service Request", {
 
 		const rows = [
 			{ label: __("Quotation"), doctype: "Quotation", name: frm.doc.quotation },
-			{ label: __("Sales Order"), doctype: "Sales Order", name: frm.doc.sales_order },
+			...(frm.doc.sales_order ? [{ label: __("Sales Order"), doctype: "Sales Order", name: frm.doc.sales_order }] : []),
 			{ label: __("Sales Invoice"), doctype: "Sales Invoice", name: frm.doc.sales_invoice },
 		];
 
@@ -325,7 +330,10 @@ frappe.ui.form.on("Service Request", {
 					return `<tr>
 						<td><b>${row.label}</b></td>
 						<td><a href="${href}" class="garage-related-doc">${frappe.utils.escape_html(row.name)}</a></td>
-						<td class="text-right"><button class="btn btn-xs btn-default garage-open-doc" data-doctype="${row.doctype}" data-name="${frappe.utils.escape_html(row.name)}">${__("Open")}</button></td>
+						<td class="text-right" style="white-space:nowrap;">
+							<button class="btn btn-xs btn-default garage-open-doc" data-doctype="${row.doctype}" data-name="${frappe.utils.escape_html(row.name)}">${__("Open")}</button>
+							<button class="btn btn-xs btn-default text-danger garage-unlink-doc" data-doctype="${row.doctype}" data-name="${frappe.utils.escape_html(row.name)}" style="margin-left:4px;">${__("Unlink")}</button>
+						</td>
 					</tr>`;
 				}
 				return `<tr>
@@ -354,6 +362,11 @@ frappe.ui.form.on("Service Request", {
 			e.preventDefault();
 			const $btn = $(e.currentTarget);
 			frappe.set_route("Form", $btn.data("doctype"), $btn.data("name"));
+		});
+		wrap.find(".garage-unlink-doc").on("click", (e) => {
+			e.preventDefault();
+			const $btn = $(e.currentTarget);
+			frm.events.confirm_and_unlink(frm, $btn.data("doctype"), $btn.data("name"));
 		});
 		wrap.find(".garage-create-invoice").on("click", (e) => {
 			e.preventDefault();
@@ -394,24 +407,6 @@ frappe.ui.form.on("Service Request", {
 		}
 
 		frm.add_custom_button(__("Repair Job"), () => prompt_assignee(frm, "repair_job"), __("Create"));
-
-		if (frm.doc.quotation && !frm.doc.sales_order) {
-			frm.add_custom_button(
-				__("Sales Order"),
-				() => {
-					frappe.call({
-						method: "garage_management.api.service_request.create_sales_order",
-						args: { service_request: frm.doc.name },
-						freeze: true,
-						callback(r) {
-							if (!r.message) return;
-							after_commercial_created(frm, "Sales Order", r.message);
-						},
-					});
-				},
-				__("Create")
-			);
-		}
 
 		if (!frm.doc.sales_invoice) {
 			frm.add_custom_button(
@@ -509,11 +504,53 @@ frappe.ui.form.on("Service Request", {
 			}, __("Actions"));
 		}
 
+		if (frm.doc.quotation) {
+			frm.add_custom_button(__("Unlink Quotation"), () => {
+				frm.events.confirm_and_unlink(frm, "Quotation", frm.doc.quotation);
+			}, __("Actions"));
+		}
+		if (frm.doc.sales_order) {
+			frm.add_custom_button(__("Unlink Sales Order"), () => {
+				frm.events.confirm_and_unlink(frm, "Sales Order", frm.doc.sales_order);
+			}, __("Actions"));
+		}
+		if (frm.doc.sales_invoice) {
+			frm.add_custom_button(__("Unlink Sales Invoice"), () => {
+				frm.events.confirm_and_unlink(frm, "Sales Invoice", frm.doc.sales_invoice);
+			}, __("Actions"));
+		}
+
 		// --- PRINT MENU ---
 		frm.add_custom_button(__("Job Report"), () => open_print("Service Request", frm.doc.name, "Job Report"), __("Print"));
 		frm.add_custom_button(__("Receiving Report"), () => open_print("Service Request", frm.doc.name, "Receiving Report"), __("Print"));
 		frm.add_custom_button(__("Inspection Report"), () => print_linked(frm, "Inspection", "Inspection Report"), __("Print"));
 		frm.add_custom_button(__("Job Repair Report"), () => print_linked(frm, "Repair Job", "Job Repair Report"), __("Print"));
+	},
+
+	confirm_and_unlink(frm, doctype, docname) {
+		const method_map = {
+			"Quotation": "garage_management.api.service_request.unlink_quotation",
+			"Sales Order": "garage_management.api.service_request.unlink_sales_order",
+			"Sales Invoice": "garage_management.api.service_request.unlink_sales_invoice",
+		};
+		const method = method_map[doctype];
+		if (!method) return;
+
+		frappe.confirm(
+			__("Are you sure you want to unlink {0} <b>{1}</b> from this Service Request? This allows you to delete the {0} or create a new one.", [doctype, frappe.utils.escape_html(docname)]),
+			() => {
+				frappe.call({
+					method: method,
+					args: { service_request: frm.doc.name },
+					freeze: true,
+					callback(r) {
+						if (!r.exc) {
+							frm.reload_doc();
+						}
+					},
+				});
+			}
+		);
 	},
 });
 
@@ -571,16 +608,22 @@ function prompt_assignee(frm, kind) {
 }
 
 function open_print(doctype, name, format) {
-	const url = frappe.urllib.get_full_url(
+	const letterhead =
+		(cur_frm && cur_frm.doc && cur_frm.doc.letter_head) ||
+		frappe.defaults.get_default("letter_head") ||
+		"";
+	let url =
 		"/printview?doctype=" +
-			encodeURIComponent(doctype) +
-			"&name=" +
-			encodeURIComponent(name) +
-			"&format=" +
-			encodeURIComponent(format) +
-			"&no_letterhead=0"
-	);
-	window.open(url, "_blank");
+		encodeURIComponent(doctype) +
+		"&name=" +
+		encodeURIComponent(name) +
+		"&format=" +
+		encodeURIComponent(format) +
+		"&no_letterhead=0";
+	if (letterhead) {
+		url += "&letterhead=" + encodeURIComponent(letterhead);
+	}
+	window.open(frappe.urllib.get_full_url(url), "_blank");
 }
 
 function print_linked(frm, doctype, format) {

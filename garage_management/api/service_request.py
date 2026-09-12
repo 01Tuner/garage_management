@@ -196,7 +196,10 @@ def create_quotation(service_request):
 	if req.quotation and frappe.db.exists("Quotation", req.quotation):
 		frappe.throw(_("Quotation {0} already linked").format(req.quotation))
 
-	# If billing items is empty, try to auto-sync from inspection
+	# If billing items is empty, try to auto-sync from repair job or inspection
+	if not req.billing_items:
+		sync_repair_job_parts_to_billing(service_request)
+		req.reload()
 	if not req.billing_items:
 		sync_inspection_items_to_billing(service_request)
 		req.reload()
@@ -213,8 +216,11 @@ def create_quotation(service_request):
 	quotation.order_type = "Sales"
 	if settings.default_price_list:
 		quotation.selling_price_list = settings.default_price_list
-	if settings.default_taxes_and_charges:
-		quotation.taxes_and_charges = settings.default_taxes_and_charges
+	tax_template = settings.default_taxes_and_charges or frappe.db.get_value(
+		"Sales Taxes and Charges Template", {"company": req.company, "is_default": 1}
+	)
+	if tax_template:
+		quotation.taxes_and_charges = tax_template
 
 	if hasattr(quotation, "service_request"):
 		quotation.service_request = req.name
@@ -222,8 +228,9 @@ def create_quotation(service_request):
 	for row in req.billing_items:
 		quotation.append("items", _item_row_from_billing(row))
 
-	if quotation.taxes_and_charges:
-		quotation.set_taxes()
+	quotation.run_method("set_missing_values")
+	quotation.set_taxes()
+	quotation.run_method("calculate_taxes_and_totals")
 
 	# Create as Draft (docstatus = 0) so user can review and edit
 	quotation.insert(ignore_permissions=True)
@@ -332,6 +339,117 @@ def sync_inspection_items_to_billing(service_request):
 
 
 @frappe.whitelist()
+def sync_repair_job_parts_to_billing(service_request):
+	"""Sync spare parts used in active Repair Jobs into Service Request billing items."""
+	req = frappe.get_doc("Service Request", service_request)
+	repair_jobs = frappe.get_all(
+		"Repair Job",
+		filters={"service_request": service_request, "status": ["!=", "Cancelled"]},
+		pluck="name",
+	)
+	if not repair_jobs:
+		return 0
+
+	existing_items = {row.item_code: row for row in req.billing_items if row.item_code}
+	added = 0
+	updated = 0
+	settings = _settings()
+	default_wh = settings.default_warehouse
+
+	for rj_name in repair_jobs:
+		rj = frappe.get_doc("Repair Job", rj_name)
+		for row in rj.spare_parts or []:
+			if not row.item_code:
+				continue
+
+			item_details = frappe.db.get_value(
+				"Item",
+				row.item_code,
+				["item_name", "description", "is_stock_item", "standard_rate"],
+				as_dict=True,
+			)
+			if not item_details:
+				continue
+
+			rate = flt(row.rate) or flt(item_details.standard_rate or 0)
+			if not rate and settings.default_price_list:
+				pl_rate = frappe.db.get_value(
+					"Item Price",
+					{"item_code": row.item_code, "price_list": settings.default_price_list, "selling": 1},
+					"price_list_rate",
+				)
+				if pl_rate:
+					rate = flt(pl_rate)
+
+			if row.item_code in existing_items:
+				b_row = existing_items[row.item_code]
+				changed = False
+				if flt(row.qty) > flt(b_row.qty):
+					b_row.qty = flt(row.qty)
+					changed = True
+				if not flt(b_row.rate) and rate:
+					b_row.rate = rate
+					changed = True
+				if not b_row.warehouse and (row.warehouse or default_wh):
+					b_row.warehouse = row.warehouse or default_wh
+					changed = True
+				if changed:
+					b_row.amount = flt(b_row.qty) * flt(b_row.rate)
+					updated += 1
+				continue
+
+			req.append(
+				"billing_items",
+				{
+					"item_code": row.item_code,
+					"item_name": row.item_name or item_details.item_name,
+					"description": row.description or item_details.description,
+					"qty": flt(row.qty or 1),
+					"rate": rate,
+					"amount": flt(row.qty or 1) * rate,
+					"warehouse": row.warehouse or (default_wh if item_details.is_stock_item else None),
+					"is_stock_item": item_details.is_stock_item,
+				},
+			)
+			existing_items[row.item_code] = req.billing_items[-1]
+			added += 1
+
+	if added > 0 or updated > 0:
+		req.calculate_billing_total()
+		req.save(ignore_permissions=True)
+
+	return added + updated
+
+
+def _get_repair_job_parts(service_request):
+	"""Fetch all spare parts logged across active (non-cancelled) Repair Jobs."""
+	jobs = frappe.get_all(
+		"Repair Job",
+		filters={"service_request": service_request, "status": ["!=", "Cancelled"]},
+		pluck="name",
+	)
+	parts = []
+	for j_name in jobs:
+		job_doc = frappe.get_doc("Repair Job", j_name)
+		for p in job_doc.spare_parts or []:
+			if p.item_code:
+				parts.append({
+					"repair_job": j_name,
+					"item_code": p.item_code,
+					"item_name": p.item_name,
+					"description": p.description,
+					"qty": flt(p.qty or 1),
+					"rate": flt(p.rate or 0),
+					"amount": flt(p.amount or 0),
+					"uom": p.uom,
+					"warehouse": p.warehouse,
+					"serial_no": getattr(p, "serial_no", None),
+					"batch_no": getattr(p, "batch_no", None),
+				})
+	return parts
+
+
+@frappe.whitelist()
 def create_sales_order(service_request):
 	req = _get_request(service_request)
 	if req.sales_order and frappe.db.exists("Sales Order", req.sales_order):
@@ -364,72 +482,125 @@ def create_sales_invoice(service_request):
 	if req.sales_invoice and frappe.db.exists("Sales Invoice", req.sales_invoice):
 		frappe.throw(_("Sales Invoice {0} already linked").format(req.sales_invoice))
 
+	# First, sync any spare parts from Repair Jobs to Billing Items
+	sync_repair_job_parts_to_billing(service_request)
+	req.reload()
+
 	settings = _settings()
+	default_wh = settings.default_warehouse
 	si = None
 
-	if req.sales_order and frappe.db.exists("Sales Order", req.sales_order):
-		from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
-		si = make_sales_invoice(req.sales_order)
-	elif req.quotation and frappe.db.exists("Quotation", req.quotation):
+	if req.quotation and frappe.db.exists("Quotation", req.quotation):
 		q_doc = frappe.get_doc("Quotation", req.quotation)
-		si = frappe.new_doc("Sales Invoice")
-		si.customer = req.customer
-		si.company = req.company
-		si.posting_date = nowdate()
-		if q_doc.selling_price_list or settings.default_price_list:
-			si.selling_price_list = q_doc.selling_price_list or settings.default_price_list
-		if q_doc.taxes_and_charges or settings.default_taxes_and_charges:
-			si.taxes_and_charges = q_doc.taxes_and_charges or settings.default_taxes_and_charges
+		if q_doc.docstatus == 0:
+			try:
+				q_doc.flags.ignore_permissions = True
+				q_doc.submit()
+			except Exception:
+				pass
 
-		if q_doc.items:
-			for item in q_doc.items:
-				si.append(
-					"items",
-					{
-						"item_code": item.item_code,
-						"item_name": item.item_name,
-						"description": item.description,
-						"qty": item.qty,
-						"rate": item.rate,
-						"uom": item.uom or frappe.db.get_value("Item", item.item_code, "stock_uom") or "Nos",
-						"warehouse": getattr(item, "warehouse", None),
-					},
-				)
-		elif req.billing_items:
+		try:
+			from erpnext.selling.doctype.quotation.quotation import make_sales_invoice
+
+			si = make_sales_invoice(req.quotation)
+		except Exception:
+			si = None
+
+		if not si:
+			si = frappe.new_doc("Sales Invoice")
+			si.customer = req.customer
+			si.company = req.company
+			si.posting_date = nowdate()
+			if q_doc.selling_price_list or settings.default_price_list:
+				si.selling_price_list = q_doc.selling_price_list or settings.default_price_list
+			if q_doc.taxes_and_charges or settings.default_taxes_and_charges:
+				si.taxes_and_charges = q_doc.taxes_and_charges or settings.default_taxes_and_charges
+
+			existing_items = set()
+			if q_doc.items:
+				for item in q_doc.items:
+					si.append(
+						"items",
+						{
+							"item_code": item.item_code,
+							"item_name": item.item_name,
+							"description": item.description,
+							"qty": item.qty,
+							"rate": item.rate,
+							"uom": item.uom or frappe.db.get_value("Item", item.item_code, "stock_uom") or "Nos",
+							"warehouse": getattr(item, "warehouse", None) or default_wh,
+						},
+					)
+					existing_items.add(item.item_code)
+
+			if q_doc.taxes:
+				for tax in q_doc.taxes:
+					si.append(
+						"taxes",
+						{
+							"charge_type": tax.charge_type,
+							"account_head": tax.account_head,
+							"description": tax.description,
+							"rate": tax.rate,
+							"tax_amount": tax.tax_amount,
+						},
+					)
+			elif si.taxes_and_charges:
+				si.set_taxes()
+
+		# Consider items from Repair Jobs / Billing Items
+		existing_items = {item.item_code for item in si.items if item.item_code}
+		for b_row in req.billing_items:
+			if b_row.item_code and b_row.item_code not in existing_items:
+				si.append("items", _item_row_from_billing(b_row))
+				existing_items.add(b_row.item_code)
+			elif b_row.item_code and b_row.item_code in existing_items:
+				# If actual quantity used in repair job is higher than quoted, update invoice qty
+				for row in si.items:
+					if row.item_code == b_row.item_code and flt(b_row.qty) > flt(row.qty):
+						row.qty = flt(b_row.qty)
+
+		if not si.items:
 			for row in req.billing_items:
 				si.append("items", _item_row_from_billing(row))
-		else:
-			frappe.throw(_("Add items to Quotation or Service Request before creating Sales Invoice"))
 
-		if q_doc.taxes:
-			for tax in q_doc.taxes:
-				si.append(
-					"taxes",
-					{
-						"charge_type": tax.charge_type,
-						"account_head": tax.account_head,
-						"description": tax.description,
-						"rate": tax.rate,
-						"tax_amount": tax.tax_amount,
-					},
-				)
-		elif si.taxes_and_charges:
-			si.set_taxes()
-	elif req.billing_items:
+		if not si.items:
+			frappe.throw(_("Add items to Quotation, Service Request, or Repair Job before creating Sales Invoice"))
+
+	elif req.sales_order and frappe.db.exists("Sales Order", req.sales_order):
+		from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
+
+		si = make_sales_invoice(req.sales_order)
+
+		# If Repair Jobs have parts not present in Sales Order, append them
+		existing_items = {item.item_code for item in si.items if item.item_code}
+		for b_row in req.billing_items:
+			if b_row.item_code and b_row.item_code not in existing_items:
+				si.append("items", _item_row_from_billing(b_row))
+				existing_items.add(b_row.item_code)
+	else:
+		# Direct Invoicing (no Quotation / no Sales Order)
+		if not req.billing_items:
+			sync_inspection_items_to_billing(service_request)
+			req.reload()
+
+		if not req.billing_items:
+			frappe.throw(_("Add items to Service Request, complete Repair Job spare parts, or create Quotation first"))
+
 		si = frappe.new_doc("Sales Invoice")
 		si.customer = req.customer
 		si.company = req.company
 		si.posting_date = nowdate()
-		if settings.default_price_list:
-			si.selling_price_list = settings.default_price_list
-		if settings.default_taxes_and_charges:
-			si.taxes_and_charges = settings.default_taxes_and_charges
+		tax_template = settings.default_taxes_and_charges or frappe.db.get_value(
+			"Sales Taxes and Charges Template", {"company": req.company, "is_default": 1}
+		)
+		if tax_template:
+			si.taxes_and_charges = tax_template
 		for row in req.billing_items:
 			si.append("items", _item_row_from_billing(row))
-		if si.taxes_and_charges:
-			si.set_taxes()
-	else:
-		frappe.throw(_("Create Quotation or add Billing Items first"))
+		si.run_method("set_missing_values")
+		si.set_taxes()
+		si.run_method("calculate_taxes_and_totals")
 
 	# Inventory: deduct stock on invoice submit for stock items
 	si.update_stock = 1
@@ -451,6 +622,7 @@ def create_sales_invoice(service_request):
 	if hasattr(si, "service_request"):
 		si.service_request = req.name
 
+	si.run_method("calculate_taxes_and_totals")
 	si.insert(ignore_permissions=True)
 
 	req.db_set({"sales_invoice": si.name, "status": "Invoiced"}, update_modified=True)
@@ -582,3 +754,63 @@ def on_sales_invoice_cancel(doc, method=None):
 		req = frappe.get_doc("Service Request", sr)
 		status = "Completed" if req.status == "Invoiced" else req.status
 		frappe.db.set_value("Service Request", sr, {"sales_invoice": None, "status": status})
+
+
+@frappe.whitelist()
+def unlink_quotation(service_request):
+	req = frappe.get_doc("Service Request", service_request)
+	if not req.quotation:
+		frappe.throw(_("No Quotation linked to Service Request {0}").format(service_request))
+
+	old_quotation = req.quotation
+	status = "Draft" if req.status in ("Quoted", "Awaiting Approval") else req.status
+	req.db_set({"quotation": None, "status": status}, update_modified=True)
+
+	if frappe.db.exists("Quotation", old_quotation):
+		if frappe.db.has_column("Quotation", "service_request"):
+			frappe.db.set_value("Quotation", old_quotation, "service_request", None, update_modified=False)
+		if frappe.db.has_column("Quotation", "service_job"):
+			frappe.db.set_value("Quotation", old_quotation, "service_job", None, update_modified=False)
+
+	frappe.msgprint(_("Quotation {0} unlinked from Service Request").format(old_quotation), indicator="green", alert=True)
+	return {"unlinked": old_quotation}
+
+
+@frappe.whitelist()
+def unlink_sales_order(service_request):
+	req = frappe.get_doc("Service Request", service_request)
+	if not req.sales_order:
+		frappe.throw(_("No Sales Order linked to Service Request {0}").format(service_request))
+
+	old_so = req.sales_order
+	req.db_set({"sales_order": None}, update_modified=True)
+
+	if frappe.db.exists("Sales Order", old_so):
+		if frappe.db.has_column("Sales Order", "service_request"):
+			frappe.db.set_value("Sales Order", old_so, "service_request", None, update_modified=False)
+		if frappe.db.has_column("Sales Order", "service_job"):
+			frappe.db.set_value("Sales Order", old_so, "service_job", None, update_modified=False)
+
+	frappe.msgprint(_("Sales Order {0} unlinked from Service Request").format(old_so), indicator="green", alert=True)
+	return {"unlinked": old_so}
+
+
+@frappe.whitelist()
+def unlink_sales_invoice(service_request):
+	req = frappe.get_doc("Service Request", service_request)
+	if not req.sales_invoice:
+		frappe.throw(_("No Sales Invoice linked to Service Request {0}").format(service_request))
+
+	old_si = req.sales_invoice
+	status = "Completed" if req.status == "Invoiced" else req.status
+	req.db_set({"sales_invoice": None, "status": status}, update_modified=True)
+
+	if frappe.db.exists("Sales Invoice", old_si):
+		if frappe.db.has_column("Sales Invoice", "service_request"):
+			frappe.db.set_value("Sales Invoice", old_si, "service_request", None, update_modified=False)
+		if frappe.db.has_column("Sales Invoice", "service_job"):
+			frappe.db.set_value("Sales Invoice", old_si, "service_job", None, update_modified=False)
+
+	frappe.msgprint(_("Sales Invoice {0} unlinked from Service Request").format(old_si), indicator="green", alert=True)
+	return {"unlinked": old_si}
+

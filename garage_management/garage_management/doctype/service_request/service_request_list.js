@@ -7,9 +7,13 @@ frappe.listview_settings["Service Request"] = {
 		"complaint",
 		"billing_total",
 		"quotation",
-		"sales_order",
 		"sales_invoice",
 		"mobile_no",
+		"inspection_status",
+		"repair_status",
+		"engine_vehicle_notes",
+		"received_date",
+		"customer",
 	],
 	get_indicator(doc) {
 		const colors = {

@@ -315,6 +315,7 @@
    "allow_on_submit": 1,
    "fieldname": "sales_order",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "Sales Order",
    "options": "Sales Order",
    "read_only": 1

@@ -87,11 +87,15 @@ frappe.ui.form.on("Service Job", {
 				doctype: "Quotation",
 				name: frm.doc.quotation,
 			},
-			{
-				label: __("Sales Order"),
-				doctype: "Sales Order",
-				name: frm.doc.sales_order,
-			},
+			...(frm.doc.sales_order
+				? [
+						{
+							label: __("Sales Order"),
+							doctype: "Sales Order",
+							name: frm.doc.sales_order,
+						},
+				  ]
+				: []),
 			{
 				label: __("Sales Invoice"),
 				doctype: "Sales Invoice",
@@ -108,7 +112,10 @@ frappe.ui.form.on("Service Job", {
 					return `<tr>
 						<td><b>${row.label}</b></td>
 						<td><a href="${href}" class="garage-related-doc">${frappe.utils.escape_html(row.name)}</a></td>
-						<td><button class="btn btn-xs btn-default garage-open-doc" data-doctype="${row.doctype}" data-name="${frappe.utils.escape_html(row.name)}">${__("Open")}</button></td>
+						<td style="white-space:nowrap;">
+							<button class="btn btn-xs btn-default garage-open-doc" data-doctype="${row.doctype}" data-name="${frappe.utils.escape_html(row.name)}">${__("Open")}</button>
+							<button class="btn btn-xs btn-default text-danger garage-unlink-doc" data-doctype="${row.doctype}" data-name="${frappe.utils.escape_html(row.name)}" style="margin-left:4px;">${__("Unlink")}</button>
+						</td>
 					</tr>`;
 				}
 				return `<tr>
@@ -126,7 +133,7 @@ frappe.ui.form.on("Service Job", {
 					<tbody>${body}</tbody>
 				</table>
 				<p class="text-muted small" style="margin:8px 0 0;">
-					${__("Use Create → Quotation / Sales Order / Sales Invoice from the toolbar.")}
+					${__("Use Create → Quotation / Sales Invoice from the toolbar.")}
 				</p>
 			</div>
 		`);
@@ -136,6 +143,37 @@ frappe.ui.form.on("Service Job", {
 			const $btn = $(e.currentTarget);
 			frappe.set_route("Form", $btn.data("doctype"), $btn.data("name"));
 		});
+		wrap.find(".garage-unlink-doc").on("click", (e) => {
+			e.preventDefault();
+			const $btn = $(e.currentTarget);
+			frm.events.confirm_and_unlink(frm, $btn.data("doctype"), $btn.data("name"));
+		});
+	},
+
+	confirm_and_unlink(frm, doctype, docname) {
+		const method_map = {
+			"Quotation": "garage_management.api.service_job.unlink_quotation",
+			"Sales Order": "garage_management.api.service_job.unlink_sales_order",
+			"Sales Invoice": "garage_management.api.service_job.unlink_sales_invoice",
+		};
+		const method = method_map[doctype];
+		if (!method) return;
+
+		frappe.confirm(
+			__("Are you sure you want to unlink {0} <b>{1}</b> from this Service Job? This allows you to delete the {0} or create a new one.", [doctype, frappe.utils.escape_html(docname)]),
+			() => {
+				frappe.call({
+					method: method,
+					args: { service_job: frm.doc.name },
+					freeze: true,
+					callback(r) {
+						if (!r.exc) {
+							frm.reload_doc();
+						}
+					},
+				});
+			}
+		);
 	},
 
 	toggle_buttons(frm) {
@@ -147,16 +185,25 @@ frappe.ui.form.on("Service Job", {
 			frm.add_custom_button(__("Open Quotation"), () => {
 				frappe.set_route("Form", "Quotation", frm.doc.quotation);
 			}, __("Related"));
+			frm.add_custom_button(__("Unlink Quotation"), () => {
+				frm.events.confirm_and_unlink(frm, "Quotation", frm.doc.quotation);
+			}, __("Actions"));
 		}
 		if (frm.doc.sales_order) {
 			frm.add_custom_button(__("Open Sales Order"), () => {
 				frappe.set_route("Form", "Sales Order", frm.doc.sales_order);
 			}, __("Related"));
+			frm.add_custom_button(__("Unlink Sales Order"), () => {
+				frm.events.confirm_and_unlink(frm, "Sales Order", frm.doc.sales_order);
+			}, __("Actions"));
 		}
 		if (frm.doc.sales_invoice) {
 			frm.add_custom_button(__("Open Sales Invoice"), () => {
 				frappe.set_route("Form", "Sales Invoice", frm.doc.sales_invoice);
 			}, __("Related"));
+			frm.add_custom_button(__("Unlink Sales Invoice"), () => {
+				frm.events.confirm_and_unlink(frm, "Sales Invoice", frm.doc.sales_invoice);
+			}, __("Actions"));
 		}
 
 		if (!frm.doc.quotation) {
@@ -177,25 +224,7 @@ frappe.ui.form.on("Service Job", {
 			);
 		}
 
-		if (frm.doc.quotation && !frm.doc.sales_order) {
-			frm.add_custom_button(
-				__("Create Sales Order"),
-				() => {
-					frappe.call({
-						method: "garage_management.api.service_job.create_sales_order",
-						args: { service_job: frm.doc.name },
-						freeze: true,
-						callback(r) {
-							if (!r.message) return;
-							after_commercial_created(frm, "Sales Order", r.message);
-						},
-					});
-				},
-				__("Create")
-			);
-		}
-
-		if ((frm.doc.sales_order || frm.doc.quotation) && !frm.doc.sales_invoice) {
+		if (!frm.doc.sales_invoice) {
 			frm.add_custom_button(
 				__("Create Sales Invoice"),
 				() => {

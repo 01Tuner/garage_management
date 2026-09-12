@@ -18,6 +18,14 @@ class Inspection(Document):
 		self.sync_fetched_fields()
 		self.enforce_photo_stages()
 		self.validate_service_request_status()
+		if not self.get("letter_head"):
+			if self.get("service_request"):
+				self.letter_head = frappe.db.get_value("Service Request", self.service_request, "letter_head")
+			if not self.get("letter_head"):
+				self.letter_head = (
+					frappe.db.get_value("Letter Head", {"is_default": 1, "disabled": 0}, "name")
+					or frappe.db.get_value("Letter Head", {"is_default": 1}, "name")
+				)
 
 	def on_update(self):
 		self.bump_parent_status()

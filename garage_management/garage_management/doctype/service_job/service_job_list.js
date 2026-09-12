@@ -8,7 +8,6 @@ frappe.listview_settings["Service Job"] = {
 		"complaint",
 		"billing_total",
 		"quotation",
-		"sales_order",
 		"sales_invoice",
 		"mobile_no",
 	],

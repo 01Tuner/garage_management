@@ -14,8 +14,8 @@ app_license = "mit"
 
 required_apps = ["erpnext"]
 
-app_include_css = "/assets/garage_management/css/garage_workspace.css"
-app_include_js = "/assets/garage_management/js/service_job_kanban.js"
+app_include_css = "/assets/garage_management/css/garage_workspace.css?v=5"
+app_include_js = "/assets/garage_management/js/service_job_kanban.js?v=5"
 
 after_install = "garage_management.install.after_install"
 after_migrate = "garage_management.install.after_migrate"
@@ -35,8 +35,17 @@ has_permission = {
 }
 
 doc_events = {
+	"Quotation": {
+		"on_trash": "garage_management.api.service_job.on_quotation_trash",
+		"on_cancel": "garage_management.api.service_job.on_quotation_cancel",
+	},
+	"Sales Order": {
+		"on_trash": "garage_management.api.service_job.on_sales_order_trash",
+		"on_cancel": "garage_management.api.service_job.on_sales_order_cancel",
+	},
 	"Sales Invoice": {
 		"on_submit": "garage_management.api.service_request.on_sales_invoice_submit",
-		"on_cancel": "garage_management.api.service_request.on_sales_invoice_cancel",
-	}
+		"on_cancel": "garage_management.api.service_job.on_sales_invoice_cancel_hook",
+		"on_trash": "garage_management.api.service_job.on_sales_invoice_trash",
+	},
 }

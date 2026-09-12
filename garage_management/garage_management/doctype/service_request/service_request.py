@@ -38,29 +38,26 @@ class ServiceRequest(Document):
 		if rep_s:
 			self.repair_status = rep_s
 
-	def before_submit(self):
-		if self.status == "Cancelled":
-			frappe.throw(_("Cannot submit a Cancelled Service Request"))
-
 	def on_update(self):
 		self.send_status_email_if_needed()
 
-	def on_update_after_submit(self):
-		self.calculate_billing_total()
-		self.set_warranty_expiry()
-		self.send_status_email_if_needed()
-
 	def set_defaults(self):
-		if not self.company:
+		if not self.get("company"):
 			settings = frappe.get_cached_doc("Service Job Settings")
 			if settings.company:
 				self.company = settings.company
 			else:
 				self.company = frappe.defaults.get_user_default("Company")
 
-		if not self.warranty_days:
+		if not self.get("warranty_days"):
 			settings = frappe.get_cached_doc("Service Job Settings")
 			self.warranty_days = cint(settings.default_warranty_days) or 30
+
+		if not self.get("letter_head"):
+			self.letter_head = (
+				frappe.db.get_value("Letter Head", {"is_default": 1, "disabled": 0}, "name")
+				or frappe.db.get_value("Letter Head", {"is_default": 1}, "name")
+			)
 
 	def enforce_photo_stages(self):
 		"""Ensure all photos in Service Request are tagged as Receiving stage."""

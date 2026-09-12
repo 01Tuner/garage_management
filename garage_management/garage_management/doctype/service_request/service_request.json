@@ -55,7 +55,6 @@
   "sales_order",
   "column_break_commercial",
   "sales_invoice",
-  "amended_from",
   "source_service_job"
  ],
  "fields": [
@@ -105,6 +104,12 @@
    "label": "Company",
    "options": "Company",
    "reqd": 1
+  },
+  {
+   "fieldname": "letter_head",
+   "fieldtype": "Link",
+   "label": "Letter Head",
+   "options": "Letter Head"
   },
   {
    "default": "Now",
@@ -343,6 +348,7 @@
    "allow_on_submit": 1,
    "fieldname": "sales_order",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "Sales Order",
    "options": "Sales Order",
    "read_only": 1
@@ -360,15 +366,6 @@
    "read_only": 1
   },
   {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Service Request",
-   "print_hide": 1,
-   "read_only": 1
-  },
-  {
    "fieldname": "source_service_job",
    "fieldtype": "Link",
    "hidden": 1,
@@ -380,7 +377,7 @@
   }
  ],
  "index_web_pages_for_search": 1,
- "is_submittable": 1,
+ "is_submittable": 0,
  "links": [
   {
    "link_doctype": "Inspection",
@@ -391,15 +388,13 @@
    "link_fieldname": "service_request"
   }
  ],
- "modified": "2026-09-07 23:00:00.000000",
+ "modified": "2026-09-12 19:30:00.000000",
  "modified_by": "Administrator",
  "module": "Garage Management",
  "name": "Service Request",
  "owner": "Administrator",
  "permissions": [
   {
-   "amend": 1,
-   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -409,13 +404,11 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
-   "submit": 1,
    "write": 1
   },
   {
-   "amend": 1,
-   "cancel": 1,
    "create": 1,
+   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
@@ -423,7 +416,6 @@
    "report": 1,
    "role": "Garage Manager",
    "share": 1,
-   "submit": 1,
    "write": 1
   },
   {
@@ -435,7 +427,6 @@
    "report": 1,
    "role": "Garage Front Desk",
    "share": 1,
-   "submit": 1,
    "write": 1
   },
   {
