@@ -21,6 +21,7 @@ frappe.ui.form.on("Repair Job", {
 		if (frm.is_new()) return;
 
 		// --- VIEW MENU ---
+
 		if (frm.doc.service_request) {
 			frm.add_custom_button(__("Service Request"), () => {
 				frappe.set_route("Form", "Service Request", frm.doc.service_request);
@@ -68,7 +69,7 @@ frappe.ui.form.on("Repair Job", {
 			}, __("Actions"));
 		}
 
-		if (frm.doc.status === "In Progress") {
+		if (frm.doc.status === "Repairing" || frm.doc.status === "In Progress") {
 			frm.add_custom_button(__("Send for Testing"), () => {
 				frm.call({
 					doc: frm.doc,
@@ -81,7 +82,7 @@ frappe.ui.form.on("Repair Job", {
 			}, __("Actions"));
 		}
 
-		if (frm.doc.status === "In Progress" || frm.doc.status === "Testing") {
+		if (frm.doc.status === "Repairing" || frm.doc.status === "In Progress" || frm.doc.status === "Testing") {
 			frm.add_custom_button(__("Mark Completed"), () => {
 				frm.call({
 					doc: frm.doc,
@@ -575,6 +576,7 @@ frappe.ui.form.on("Service Job Photo", {
 function status_color(status) {
 	const map = {
 		Draft: "gray",
+		Repairing: "cyan",
 		"In Progress": "cyan",
 		Testing: "purple",
 		Completed: "green",

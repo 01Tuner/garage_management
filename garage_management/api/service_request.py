@@ -252,9 +252,9 @@ def mark_customer_approved(service_request):
 			except Exception:
 				pass
 
-	updates = {"status": "In Progress"}
+	updates = {"status": "Repairing"}
 	req.db_set(updates, update_modified=True)
-	frappe.msgprint(_("Customer approved — Service Request is In Progress"), indicator="green", alert=True)
+	frappe.msgprint(_("Customer approved — Service Request is Repairing"), indicator="green", alert=True)
 	return req.name
 
 
@@ -455,24 +455,78 @@ def create_sales_order(service_request):
 	if req.sales_order and frappe.db.exists("Sales Order", req.sales_order):
 		frappe.throw(_("Sales Order {0} already linked").format(req.sales_order))
 
-	if not req.quotation:
-		frappe.throw(_("Create a Quotation first"))
+	sync_repair_job_parts_to_billing(service_request)
+	req.reload()
 
-	from erpnext.selling.doctype.quotation.quotation import make_sales_order
+	settings = _settings()
+	so = None
 
-	# Ensure quotation is submitted before making Sales Order
-	qdoc = frappe.get_doc("Quotation", req.quotation)
-	if qdoc.docstatus == 0:
-		qdoc.flags.ignore_permissions = True
-		qdoc.submit()
+	if req.quotation and frappe.db.exists("Quotation", req.quotation):
+		from erpnext.selling.doctype.quotation.quotation import make_sales_order
 
-	so = make_sales_order(req.quotation)
+		# Ensure quotation is submitted before making Sales Order
+		qdoc = frappe.get_doc("Quotation", req.quotation)
+		if qdoc.docstatus == 0:
+			qdoc.flags.ignore_permissions = True
+			qdoc.submit()
+
+		so = make_sales_order(req.quotation)
+	elif req.billing_items:
+		so = frappe.new_doc("Sales Order")
+		so.customer = req.customer
+		so.company = req.company
+		so.transaction_date = nowdate()
+		so.delivery_date = nowdate()
+		if settings.default_price_list:
+			so.selling_price_list = settings.default_price_list
+		tax_template = settings.default_taxes_and_charges or frappe.db.get_value(
+			"Sales Taxes and Charges Template", {"company": req.company, "is_default": 1}
+		)
+		if tax_template:
+			so.taxes_and_charges = tax_template
+		for row in req.billing_items:
+			so.append("items", _item_row_from_billing(row))
+		so.run_method("set_missing_values")
+		so.set_taxes()
+		so.run_method("calculate_taxes_and_totals")
+	else:
+		frappe.throw(_("Add items to Service Request, complete Repair Job spare parts, or create Quotation first"))
+
+	if hasattr(so, "delivery_date") and not so.delivery_date:
+		so.delivery_date = nowdate()
+	for item in getattr(so, "items", []):
+		if not getattr(item, "delivery_date", None):
+			item.delivery_date = so.delivery_date or nowdate()
+
+	if req.get("customer_po_no") and hasattr(so, "po_no") and not so.po_no:
+		so.po_no = req.customer_po_no
+	if req.get("customer_po_date") and hasattr(so, "po_date") and not so.po_date:
+		so.po_date = req.customer_po_date
+
 	if hasattr(so, "service_request"):
 		so.service_request = req.name
 	so.insert(ignore_permissions=True)
 
-	req.db_set({"sales_order": so.name, "status": "In Progress"}, update_modified=True)
-	frappe.msgprint(_("Sales Order {0} created").format(so.name), indicator="green", alert=True)
+	# Determine next status: if there are stock parts, move to Awaiting Parts, otherwise In Progress
+	has_parts = False
+	for row in req.billing_items or []:
+		if row.item_code and frappe.db.get_value("Item", row.item_code, "is_stock_item"):
+			has_parts = True
+			break
+
+	next_status = "Awaiting Parts" if has_parts else "Repairing"
+
+	updates = {
+		"sales_order": so.name,
+		"status": next_status,
+	}
+	if hasattr(so, "po_no") and so.po_no:
+		updates["customer_po_no"] = so.po_no
+	if hasattr(so, "po_date") and so.po_date:
+		updates["customer_po_date"] = so.po_date
+
+	req.db_set(updates, update_modified=True)
+	frappe.msgprint(_("Sales Order {0} created. Status: {1}").format(so.name, next_status), indicator="green", alert=True)
 	return so.name
 
 
@@ -490,7 +544,26 @@ def create_sales_invoice(service_request):
 	default_wh = settings.default_warehouse
 	si = None
 
-	if req.quotation and frappe.db.exists("Quotation", req.quotation):
+	if req.sales_order and frappe.db.exists("Sales Order", req.sales_order):
+		from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
+
+		so_doc = frappe.get_doc("Sales Order", req.sales_order)
+		if so_doc.docstatus == 0:
+			try:
+				so_doc.flags.ignore_permissions = True
+				so_doc.submit()
+			except Exception:
+				pass
+
+		si = make_sales_invoice(req.sales_order)
+
+		# If Repair Jobs have parts not present in Sales Order, append them
+		existing_items = {item.item_code for item in si.items if item.item_code}
+		for b_row in req.billing_items:
+			if b_row.item_code and b_row.item_code not in existing_items:
+				si.append("items", _item_row_from_billing(b_row))
+				existing_items.add(b_row.item_code)
+	elif req.quotation and frappe.db.exists("Quotation", req.quotation):
 		q_doc = frappe.get_doc("Quotation", req.quotation)
 		if q_doc.docstatus == 0:
 			try:
@@ -566,18 +639,6 @@ def create_sales_invoice(service_request):
 
 		if not si.items:
 			frappe.throw(_("Add items to Quotation, Service Request, or Repair Job before creating Sales Invoice"))
-
-	elif req.sales_order and frappe.db.exists("Sales Order", req.sales_order):
-		from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
-
-		si = make_sales_invoice(req.sales_order)
-
-		# If Repair Jobs have parts not present in Sales Order, append them
-		existing_items = {item.item_code for item in si.items if item.item_code}
-		for b_row in req.billing_items:
-			if b_row.item_code and b_row.item_code not in existing_items:
-				si.append("items", _item_row_from_billing(b_row))
-				existing_items.add(b_row.item_code)
 	else:
 		# Direct Invoicing (no Quotation / no Sales Order)
 		if not req.billing_items:
@@ -678,8 +739,8 @@ def sync_job_sub_statuses(service_request):
 		repair_status = "Pending"
 	else:
 		active = [r.status for r in repairs if r.status != "Cancelled"]
-		if any(s == "In Progress" for s in active):
-			repair_status = "In Progress"
+		if any(s in ("Repairing", "In Progress") for s in active):
+			repair_status = "Repairing"
 		elif any(s == "Testing" for s in active):
 			repair_status = "Testing"
 		elif active and all(s == "Completed" for s in active):

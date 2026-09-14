@@ -34,6 +34,10 @@ has_permission = {
 	"Service Job": "garage_management.garage_management.doctype.service_job.service_job.has_permission",
 }
 
+doctype_js = {
+	"Purchase Invoice": "public/js/purchase_invoice.js",
+}
+
 doc_events = {
 	"Quotation": {
 		"on_trash": "garage_management.api.service_job.on_quotation_trash",
@@ -48,4 +52,11 @@ doc_events = {
 		"on_cancel": "garage_management.api.service_job.on_sales_invoice_cancel_hook",
 		"on_trash": "garage_management.api.service_job.on_sales_invoice_trash",
 	},
+	"Purchase Invoice": {
+		"validate": "garage_management.api.purchase_invoice.validate_purchase_invoice",
+	},
+	"Purchase Order": {
+		"validate": "garage_management.api.purchase_invoice.validate_purchase_order",
+	},
 }
+

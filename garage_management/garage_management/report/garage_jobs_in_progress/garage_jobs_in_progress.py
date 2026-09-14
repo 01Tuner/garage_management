@@ -25,6 +25,8 @@ def execute(filters=None):
 					"Inspecting",
 					"Quoted",
 					"Awaiting Approval",
+					"Awaiting Parts",
+					"Repairing",
 					"In Progress",
 					"Testing",
 					"On Hold",

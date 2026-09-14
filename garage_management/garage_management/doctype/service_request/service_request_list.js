@@ -21,6 +21,8 @@ frappe.listview_settings["Service Request"] = {
 			Inspecting: "orange",
 			Quoted: "yellow",
 			"Awaiting Approval": "purple",
+			"Awaiting Parts": "orange",
+			Repairing: "cyan",
 			"In Progress": "cyan",
 			Testing: "pink",
 			Completed: "green",

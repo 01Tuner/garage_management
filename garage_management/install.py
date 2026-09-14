@@ -83,6 +83,62 @@ def setup_custom_fields():
 				"print_hide": 1,
 			}
 		],
+		"Purchase Invoice": [
+			{
+				"fieldname": "service_request",
+				"label": "Service Request",
+				"fieldtype": "Link",
+				"options": "Service Request",
+				"insert_after": "supplier",
+				"print_hide": 1,
+			},
+			{
+				"fieldname": "repair_job",
+				"label": "Repair Job",
+				"fieldtype": "Link",
+				"options": "Repair Job",
+				"insert_after": "service_request",
+				"print_hide": 1,
+			},
+		],
+		"Purchase Invoice Item": [
+			{
+				"fieldname": "service_request",
+				"label": "Service Request",
+				"fieldtype": "Link",
+				"options": "Service Request",
+				"insert_after": "item_code",
+				"print_hide": 1,
+			},
+			{
+				"fieldname": "repair_job",
+				"label": "Repair Job",
+				"fieldtype": "Link",
+				"options": "Repair Job",
+				"insert_after": "service_request",
+				"print_hide": 1,
+			},
+		],
+		"Purchase Order": [
+			{
+				"fieldname": "service_request",
+				"label": "Service Request",
+				"fieldtype": "Link",
+				"options": "Service Request",
+				"insert_after": "supplier",
+				"print_hide": 1,
+			},
+		],
+		"Purchase Order Item": [
+			{
+				"fieldname": "service_request",
+				"label": "Service Request",
+				"fieldtype": "Link",
+				"options": "Service Request",
+				"insert_after": "item_code",
+				"print_hide": 1,
+			},
+		],
 	}
 	create_custom_fields(custom_fields, ignore_validate=True)
 	_hide_legacy_service_job_fields()
@@ -164,7 +220,8 @@ def create_kanban_board():
 			"Inspecting",
 			"Quoted",
 			"Awaiting Approval",
-			"In Progress",
+			"Awaiting Parts",
+			"Repairing",
 			"Testing",
 			"Completed",
 			"Invoiced",
@@ -182,7 +239,7 @@ def create_kanban_board():
 	_upsert_kanban(
 		"Repair Job by Status",
 		"Repair Job",
-		["Draft", "In Progress", "Testing", "Completed"],
+		["Draft", "Repairing", "Testing", "Completed"],
 		["assigned_to", "service_request", "job_type", "customer_name"],
 	)
 
@@ -231,6 +288,15 @@ def create_workspace_artifacts():
 	_ensure_dashboard_charts()
 	_ensure_dashboard()
 	_ensure_workspace()
+	_cleanup_legacy_artifacts()
+
+
+def _cleanup_legacy_artifacts():
+	if frappe.db.exists("Dashboard Chart", "Garage Billing by Status"):
+		try:
+			frappe.delete_doc("Dashboard Chart", "Garage Billing by Status", force=True, ignore_permissions=True)
+		except Exception:
+			pass
 
 
 def _ensure_dashboard():
@@ -245,6 +311,8 @@ def _ensure_dashboard():
 		{"card": "Garage Billing Pipeline"},
 		{"card": "Garage Revenue MTD"},
 		{"card": "Garage Invoices (MTD)"},
+		{"card": "Garage Purchases MTD"},
+		{"card": "Garage Purchase Invoices (MTD)"},
 	]
 	charts = [
 		{"chart": "Garage Jobs by Status", "width": "Half"},
@@ -254,7 +322,7 @@ def _ensure_dashboard():
 		{"chart": "Garage Inspections by Status", "width": "Half"},
 		{"chart": "Garage Repair Jobs by Status", "width": "Half"},
 		{"chart": "Garage Invoice Revenue MTD", "width": "Half"},
-		{"chart": "Garage Billing by Status", "width": "Half"},
+		{"chart": "Garage Purchases MTD", "width": "Half"},
 	]
 	payload = {
 		"doctype": "Dashboard",
@@ -286,7 +354,8 @@ def _ensure_number_cards():
 		_count_card("Garage Inspecting", "Service Request", '[["Service Request","status","=","Inspecting"]]', "#f97316"),
 		_count_card("Garage Quoted", "Service Request", '[["Service Request","status","=","Quoted"]]', "#eab308"),
 		_count_card("Garage Awaiting Approval", "Service Request", '[["Service Request","status","=","Awaiting Approval"]]', "#a855f7"),
-		_count_card("Garage In Progress", "Service Request", '[["Service Request","status","=","In Progress"]]', "#06b6d4"),
+		_count_card("Garage Awaiting Parts", "Service Request", '[["Service Request","status","=","Awaiting Parts"]]', "#f97316"),
+		_count_card("Garage In Progress", "Service Request", '[["Service Request","status","in",["Repairing","In Progress"]]]', "#06b6d4"),
 		_count_card("Garage On Hold", "Service Request", '[["Service Request","status","=","On Hold"]]', "#fb7185"),
 		_count_card(
 			"Garage Completed Today",
@@ -303,7 +372,7 @@ def _ensure_number_cards():
 		_count_card(
 			"Garage Repairs Open",
 			"Repair Job",
-			'[["Repair Job","status","in",["Draft","In Progress","Testing"]]]',
+			'[["Repair Job","status","in",["Draft","Repairing","In Progress","Testing"]]]',
 			"#14b8a6",
 		),
 		{
@@ -337,6 +406,25 @@ def _ensure_number_cards():
 			"Sales Invoice",
 			'[["Sales Invoice","service_request","is","set"],["Sales Invoice","docstatus","=",1],["Sales Invoice","posting_date","Timespan","this month"]]',
 			"#059669",
+		),
+		{
+			"doctype": "Number Card",
+			"label": "Garage Purchases MTD",
+			"type": "Document Type",
+			"document_type": "Purchase Invoice",
+			"function": "Sum",
+			"aggregate_function_based_on": "grand_total",
+			"filters_json": '[["Purchase Invoice","service_request","is","set"],["Purchase Invoice","docstatus","=",1],["Purchase Invoice","posting_date","Timespan","this month"]]',
+			"is_public": 1,
+			"show_percentage_stats": 1,
+			"stats_time_interval": "Monthly",
+			"color": "#e67e22",
+		},
+		_count_card(
+			"Garage Purchase Invoices (MTD)",
+			"Purchase Invoice",
+			'[["Purchase Invoice","service_request","is","set"],["Purchase Invoice","docstatus","=",1],["Purchase Invoice","posting_date","Timespan","this month"]]',
+			"#d97706",
 		),
 		_count_card("Garage Cancelled", "Service Request", '[["Service Request","status","=","Cancelled"]]', "#ef4444"),
 	]
@@ -455,17 +543,18 @@ def _ensure_dashboard_charts():
 			"color": "#16a34a",
 		},
 		{
-			"chart_name": "Garage Billing by Status",
-			"chart_type": "Group By",
-			"document_type": "Service Request",
-			"group_by_type": "Sum",
-			"group_by_based_on": "status",
-			"aggregate_function_based_on": "billing_total",
+			"chart_name": "Garage Purchases MTD",
+			"chart_type": "Sum",
+			"document_type": "Purchase Invoice",
+			"based_on": "posting_date",
+			"value_based_on": "grand_total",
+			"time_interval": "Daily",
+			"timespan": "Last Month",
+			"timeseries": 1,
 			"is_public": 1,
 			"type": "Bar",
-			"timeseries": 0,
-			"filters_json": '[["Service Request","status","not in",["Cancelled"]]]',
-			"color": "#7c3aed",
+			"filters_json": '[["Purchase Invoice","service_request","is","set"],["Purchase Invoice","docstatus","=",1]]',
+			"color": "#f97316",
 		},
 	]
 	for chart in charts:
@@ -489,10 +578,12 @@ def _ensure_workspace():
 		{"id": "work_header", "type": "header", "data": {"text": "<span class=\"h4\">Floor Load</span>", "col": 12}},
 		{"id": "nc_insp_open", "type": "number_card", "data": {"number_card_name": "Garage Inspections Open", "col": 3}},
 		{"id": "nc_rj_open", "type": "number_card", "data": {"number_card_name": "Garage Repairs Open", "col": 3}},
-		{"id": "nc_bill", "type": "number_card", "data": {"number_card_name": "Garage Billing Pipeline", "col": 3}},
-		{"id": "nc_rev", "type": "number_card", "data": {"number_card_name": "Garage Revenue MTD", "col": 3}},
 		{"id": "money_header", "type": "header", "data": {"text": "<span class=\"h4\">Commercial</span>", "col": 12}},
+		{"id": "nc_rev", "type": "number_card", "data": {"number_card_name": "Garage Revenue MTD", "col": 3}},
 		{"id": "nc_inv", "type": "number_card", "data": {"number_card_name": "Garage Invoices (MTD)", "col": 3}},
+		{"id": "nc_purch_cost", "type": "number_card", "data": {"number_card_name": "Garage Purchases MTD", "col": 3}},
+		{"id": "nc_purch_inv", "type": "number_card", "data": {"number_card_name": "Garage Purchase Invoices (MTD)", "col": 3}},
+		{"id": "nc_bill", "type": "number_card", "data": {"number_card_name": "Garage Billing Pipeline", "col": 3}},
 		{"id": "nc_can", "type": "number_card", "data": {"number_card_name": "Garage Cancelled", "col": 3}},
 		{"id": "chart_header", "type": "header", "data": {"text": "<span class=\"h4\">Pipeline</span>", "col": 12}},
 		{"id": "ch_status", "type": "chart", "data": {"chart_name": "Garage Jobs by Status", "col": 4}},
@@ -502,9 +593,9 @@ def _ensure_workspace():
 		{"id": "ch_week", "type": "chart", "data": {"chart_name": "Garage Jobs This Week", "col": 4}},
 		{"id": "ch_insp", "type": "chart", "data": {"chart_name": "Garage Inspections by Status", "col": 4}},
 		{"id": "ch_rj", "type": "chart", "data": {"chart_name": "Garage Repair Jobs by Status", "col": 4}},
-		{"id": "rev_header", "type": "header", "data": {"text": "<span class=\"h4\">Revenue</span>", "col": 12}},
+		{"id": "rev_header", "type": "header", "data": {"text": "<span class=\"h4\">Revenue & Purchases</span>", "col": 12}},
 		{"id": "ch_rev", "type": "chart", "data": {"chart_name": "Garage Invoice Revenue MTD", "col": 6}},
-		{"id": "ch_bill", "type": "chart", "data": {"chart_name": "Garage Billing by Status", "col": 6}},
+		{"id": "ch_purch", "type": "chart", "data": {"chart_name": "Garage Purchases MTD", "col": 6}},
 		{"id": "links_header", "type": "header", "data": {"text": "<span class=\"h4\">Workshop Links</span>", "col": 12}},
 		{"id": "card_workshop", "type": "card", "data": {"card_name": "Workshop", "col": 3}},
 		{"id": "card_commercial", "type": "card", "data": {"card_name": "Commercial", "col": 3}},
@@ -521,11 +612,20 @@ def _ensure_workspace():
 		{"label": "Repair Job", "link_type": "DocType", "link_to": "Repair Job", "type": "Link"},
 		{"label": "Customer", "link_type": "DocType", "link_to": "Customer", "type": "Link"},
 		{"label": "Contact", "link_type": "DocType", "link_to": "Contact", "type": "Link"},
-		{"label": "Commercial", "type": "Card Break", "link_count": 3, "icon": "file"},
+		{"label": "Commercial", "type": "Card Break", "link_count": 11, "icon": "file"},
 		{"label": "Quotation", "link_type": "DocType", "link_to": "Quotation", "type": "Link"},
+		{"label": "Sales Order", "link_type": "DocType", "link_to": "Sales Order", "type": "Link"},
+		{"label": "Delivery Note", "link_type": "DocType", "link_to": "Delivery Note", "type": "Link"},
 		{"label": "Sales Invoice", "link_type": "DocType", "link_to": "Sales Invoice", "type": "Link"},
+		{"label": "Supplier Quotation", "link_type": "DocType", "link_to": "Supplier Quotation", "type": "Link"},
+		{"label": "Purchase Order", "link_type": "DocType", "link_to": "Purchase Order", "type": "Link"},
+		{"label": "Purchase Receipt", "link_type": "DocType", "link_to": "Purchase Receipt", "type": "Link"},
+		{"label": "Purchase Invoice", "link_type": "DocType", "link_to": "Purchase Invoice", "type": "Link"},
 		{"label": "Payment Entry", "link_type": "DocType", "link_to": "Payment Entry", "type": "Link"},
-		{"label": "Reports", "type": "Card Break", "link_count": 6, "icon": "table"},
+		{"label": "Journal Entry", "link_type": "DocType", "link_to": "Journal Entry", "type": "Link"},
+		{"label": "Supplier", "link_type": "DocType", "link_to": "Supplier", "type": "Link"},
+		{"label": "Reports", "type": "Card Break", "link_count": 7, "icon": "table"},
+		{"label": "Garage Job Gross Profit", "link_type": "Report", "link_to": "Garage Job Gross Profit", "type": "Link", "is_query_report": 1},
 		{"label": "Garage Jobs In Progress", "link_type": "Report", "link_to": "Garage Jobs In Progress", "type": "Link", "is_query_report": 1},
 		{"label": "Garage Completed Jobs", "link_type": "Report", "link_to": "Garage Completed Jobs", "type": "Link", "is_query_report": 1},
 		{"label": "Garage Technician Performance", "link_type": "Report", "link_to": "Garage Technician Performance", "type": "Link", "is_query_report": 1},
@@ -555,6 +655,8 @@ def _ensure_workspace():
 		{"number_card_name": "Garage Billing Pipeline", "label": "Garage Billing Pipeline"},
 		{"number_card_name": "Garage Revenue MTD", "label": "Garage Revenue MTD"},
 		{"number_card_name": "Garage Invoices (MTD)", "label": "Garage Invoices (MTD)"},
+		{"number_card_name": "Garage Purchases MTD", "label": "Garage Purchases MTD"},
+		{"number_card_name": "Garage Purchase Invoices (MTD)", "label": "Garage Purchase Invoices (MTD)"},
 		{"number_card_name": "Garage Cancelled", "label": "Garage Cancelled"},
 	]
 
@@ -566,7 +668,7 @@ def _ensure_workspace():
 		{"chart_name": "Garage Inspections by Status", "label": "Garage Inspections by Status"},
 		{"chart_name": "Garage Repair Jobs by Status", "label": "Garage Repair Jobs by Status"},
 		{"chart_name": "Garage Invoice Revenue MTD", "label": "Garage Invoice Revenue MTD"},
-		{"chart_name": "Garage Billing by Status", "label": "Garage Billing by Status"},
+		{"chart_name": "Garage Purchases MTD", "label": "Garage Purchases MTD"},
 	]
 
 	payload = {

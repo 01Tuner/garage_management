@@ -46,12 +46,20 @@
   "billing_items",
   "billing_total",
   "quotation",
+  "parts_tab",
+  "parts_section",
+  "parts_html",
+  "customer_po_section",
+  "customer_po_no",
+  "column_break_parts_po",
+  "customer_po_date",
   "repair_jobs_tab",
   "repair_jobs_section",
   "repair_jobs_html",
   "invoice_tab",
   "invoice_section",
   "invoice_html",
+  "commercial_fields_section",
   "sales_order",
   "column_break_commercial",
   "sales_invoice",
@@ -81,7 +89,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Received\nInspecting\nQuoted\nAwaiting Approval\nIn Progress\nTesting\nCompleted\nInvoiced\nDelivered\nOn Hold\nCancelled",
+   "options": "Received\nInspecting\nQuoted\nAwaiting Approval\nAwaiting Parts\nRepairing\nTesting\nCompleted\nInvoiced\nDelivered\nOn Hold\nCancelled",
    "reqd": 1
   },
   {
@@ -132,7 +140,7 @@
    "in_standard_filter": 1,
    "label": "Repair Status",
    "no_copy": 1,
-   "options": "Pending\nDraft\nIn Progress\nTesting\nCompleted\nCancelled",
+   "options": "Pending\nDraft\nRepairing\nTesting\nCompleted\nCancelled",
    "read_only": 1
   },
   {
@@ -309,6 +317,41 @@
    "read_only": 1
   },
   {
+   "fieldname": "parts_tab",
+   "fieldtype": "Tab Break",
+   "label": "Parts & Procurement"
+  },
+  {
+   "fieldname": "parts_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "parts_html",
+   "fieldtype": "HTML",
+   "label": "Parts Procurement Status"
+  },
+  {
+   "collapsible": 1,
+   "collapsed": 1,
+   "fieldname": "customer_po_section",
+   "fieldtype": "Section Break",
+   "label": "Customer PO Form Fields"
+  },
+  {
+   "fieldname": "customer_po_no",
+   "fieldtype": "Data",
+   "label": "Customer PO No"
+  },
+  {
+   "fieldname": "column_break_parts_po",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "customer_po_date",
+   "fieldtype": "Date",
+   "label": "Customer PO Date"
+  },
+  {
    "fieldname": "repair_jobs_tab",
    "fieldtype": "Tab Break",
    "label": "Repair Jobs"
@@ -330,8 +373,7 @@
   },
   {
    "fieldname": "invoice_section",
-   "fieldtype": "Section Break",
-   "label": "Invoicing & Commercial Documents"
+   "fieldtype": "Section Break"
   },
   {
    "fieldname": "invoice_html",
@@ -339,10 +381,16 @@
    "label": "Invoice Status"
   },
   {
+   "collapsed": 1,
+   "collapsible": 1,
+   "fieldname": "commercial_fields_section",
+   "fieldtype": "Section Break",
+   "label": "Linked Commercial Fields"
+  },
+  {
    "allow_on_submit": 1,
    "fieldname": "sales_order",
    "fieldtype": "Link",
-   "hidden": 1,
    "label": "Sales Order",
    "options": "Sales Order",
    "read_only": 1
@@ -463,7 +511,7 @@
   },
   {
    "color": "Cyan",
-   "title": "In Progress"
+   "title": "Repairing"
   },
   {
    "color": "Pink",

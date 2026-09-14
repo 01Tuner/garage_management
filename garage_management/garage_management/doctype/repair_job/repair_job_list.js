@@ -3,6 +3,7 @@ frappe.listview_settings["Repair Job"] = {
 	get_indicator(doc) {
 		const colors = {
 			Draft: "gray",
+			Repairing: "cyan",
 			"In Progress": "cyan",
 			Testing: "pink",
 			Completed: "green",

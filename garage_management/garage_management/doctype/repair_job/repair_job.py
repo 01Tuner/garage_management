@@ -90,10 +90,12 @@ class RepairJob(Document):
 		if self.is_new():
 			return
 		old_status = frappe.db.get_value("Repair Job", self.name, "status")
-		forward_order = ["Draft", "In Progress", "Testing", "Completed", "Cancelled"]
+		forward_order = ["Draft", "Repairing", "Testing", "Completed", "Cancelled"]
 		if old_status and self.status:
-			old_idx = forward_order.index(old_status) if old_status in forward_order else -1
-			new_idx = forward_order.index(self.status) if self.status in forward_order else -1
+			normalized_old = "Repairing" if old_status == "In Progress" else old_status
+			normalized_new = "Repairing" if self.status == "In Progress" else self.status
+			old_idx = forward_order.index(normalized_old) if normalized_old in forward_order else -1
+			new_idx = forward_order.index(normalized_new) if normalized_new in forward_order else -1
 			# Allow going to Cancelled from any state, block other backwards moves
 			if self.status != "Cancelled" and new_idx < old_idx:
 				frappe.throw(
@@ -106,7 +108,7 @@ class RepairJob(Document):
 		if not self.service_request or self.status == "Cancelled":
 			return
 		parent_status = frappe.db.get_value("Service Request", self.service_request, "status")
-		if self.status in ("In Progress", "Testing") and parent_status == "In Progress":
+		if self.status in ("Repairing", "In Progress", "Testing") and parent_status in ("Repairing", "In Progress"):
 			if self.status == "Testing":
 				others = frappe.get_all(
 					"Repair Job",
@@ -119,7 +121,7 @@ class RepairJob(Document):
 				)
 				if not others:
 					frappe.db.set_value("Service Request", self.service_request, "status", "Testing")
-		elif self.status == "Completed" and parent_status in ("In Progress", "Testing"):
+		elif self.status == "Completed" and parent_status in ("Repairing", "In Progress", "Testing"):
 			open_jobs = frappe.get_all(
 				"Repair Job",
 				filters={
@@ -145,9 +147,9 @@ class RepairJob(Document):
 
 	@frappe.whitelist()
 	def start_work(self):
-		self.db_set("status", "In Progress", update_modified=True)
+		self.db_set("status", "Repairing", update_modified=True)
 		self.bump_parent_status()
-		frappe.msgprint(_("Repair Job marked as In Progress"), indicator="green", alert=True)
+		frappe.msgprint(_("Repair Job marked as Repairing"), indicator="green", alert=True)
 		return self.name
 
 	@frappe.whitelist()

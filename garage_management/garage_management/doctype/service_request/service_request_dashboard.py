@@ -14,7 +14,11 @@ def get_data():
 			},
 			{
 				"label": _("Commercial"),
-				"items": ["Quotation", "Sales Invoice"],
+				"items": ["Quotation", "Sales Order", "Sales Invoice"],
+			},
+			{
+				"label": _("Purchases"),
+				"items": ["Purchase Order", "Purchase Invoice"],
 			},
 		],
 	}

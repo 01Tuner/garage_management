@@ -50,7 +50,7 @@ def execute(filters=None):
 				0 AS inspections,
 				COUNT(*) AS repair_jobs,
 				SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) AS completed,
-				SUM(CASE WHEN status IN ('In Progress','Testing') THEN 1 ELSE 0 END) AS in_progress
+				SUM(CASE WHEN status IN ('Repairing','In Progress','Testing') THEN 1 ELSE 0 END) AS in_progress
 			FROM `tabRepair Job`
 			WHERE IFNULL(assigned_to, '') != '' AND status != 'Cancelled' {rj_date}
 			GROUP BY assigned_to

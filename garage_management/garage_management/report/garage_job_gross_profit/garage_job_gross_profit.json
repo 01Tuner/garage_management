@@ -1,0 +1,81 @@
+{
+ "add_total_row": 1,
+ "columns": [],
+ "creation": "2026-09-12 21:00:00.000000",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "mandatory": 0,
+   "options": "Company",
+   "wildcard_filter": 0
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "label": "From Date",
+   "mandatory": 0,
+   "wildcard_filter": 0
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "To Date",
+   "mandatory": 0,
+   "wildcard_filter": 0
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Job Status",
+   "mandatory": 0,
+   "options": "\nReceived\nInspecting\nQuoted\nAwaiting Approval\nAwaiting Parts\nRepairing\nTesting\nCompleted\nInvoiced\nDelivered\nOn Hold\nCancelled",
+   "wildcard_filter": 0
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "mandatory": 0,
+   "options": "Customer",
+   "wildcard_filter": 0
+  },
+  {
+   "fieldname": "service_request",
+   "fieldtype": "Link",
+   "label": "Service Request",
+   "mandatory": 0,
+   "options": "Service Request",
+   "wildcard_filter": 0
+  }
+ ],
+ "idx": 0,
+ "is_standard": "Yes",
+ "modified": "2026-09-12 21:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Garage Management",
+ "name": "Garage Job Gross Profit",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "ref_doctype": "Service Request",
+ "report_name": "Garage Job Gross Profit",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "Garage Manager"
+  },
+  {
+   "role": "Accounts User"
+  },
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "System Manager"
+  }
+ ]
+}

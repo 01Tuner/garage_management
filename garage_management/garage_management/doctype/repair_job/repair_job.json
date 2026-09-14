@@ -81,7 +81,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "Draft\nIn Progress\nTesting\nCompleted\nCancelled",
+   "options": "Draft\nRepairing\nTesting\nCompleted\nCancelled",
    "reqd": 1
   },
   {
@@ -260,7 +260,7 @@
   },
   {
    "color": "Cyan",
-   "title": "In Progress"
+   "title": "Repairing"
   },
   {
    "color": "Pink",
