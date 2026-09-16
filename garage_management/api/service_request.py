@@ -492,22 +492,29 @@ def create_sales_order(service_request):
 	else:
 		frappe.throw(_("Add items to Service Request, complete Repair Job spare parts, or create Quotation first"))
 
-	if hasattr(so, "delivery_date") and not so.delivery_date:
-		so.delivery_date = nowdate()
-	for item in getattr(so, "items", []):
-		if not getattr(item, "delivery_date", None):
-			item.delivery_date = so.delivery_date or nowdate()
-
-	if req.get("customer_po_no") and hasattr(so, "po_no") and not so.po_no:
+	if req.get("customer_po_no") and hasattr(so, "po_no"):
 		so.po_no = req.customer_po_no
-	if req.get("customer_po_date") and hasattr(so, "po_date") and not so.po_date:
+	if req.get("customer_po_date") and hasattr(so, "po_date"):
 		so.po_date = req.customer_po_date
-
-	if hasattr(so, "service_request"):
-		so.service_request = req.name
 
 	if not getattr(so, "transaction_date", None):
 		so.transaction_date = nowdate()
+
+	# Expected delivery date must be on or after transaction_date and customer po_date
+	min_delivery_date = getdate(so.transaction_date or nowdate())
+	if getattr(so, "po_date", None) and getdate(so.po_date) > min_delivery_date:
+		min_delivery_date = getdate(so.po_date)
+
+	if hasattr(so, "delivery_date"):
+		if not so.delivery_date or getdate(so.delivery_date) < min_delivery_date:
+			so.delivery_date = min_delivery_date
+
+	for item in getattr(so, "items", []):
+		if not getattr(item, "delivery_date", None) or getdate(item.delivery_date) < min_delivery_date:
+			item.delivery_date = so.delivery_date or min_delivery_date
+
+	if hasattr(so, "service_request"):
+		so.service_request = req.name
 
 	if getattr(so, "payment_schedule", None):
 		for schedule in so.payment_schedule:
