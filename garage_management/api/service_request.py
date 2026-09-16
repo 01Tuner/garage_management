@@ -3,7 +3,7 @@
 
 import frappe
 from frappe import _
-from frappe.utils import cint, flt, nowdate
+from frappe.utils import cint, flt, getdate, nowdate
 
 
 def _get_request(name):
@@ -505,6 +505,15 @@ def create_sales_order(service_request):
 
 	if hasattr(so, "service_request"):
 		so.service_request = req.name
+
+	if not getattr(so, "transaction_date", None):
+		so.transaction_date = nowdate()
+
+	if getattr(so, "payment_schedule", None):
+		for schedule in so.payment_schedule:
+			if schedule.due_date and getdate(schedule.due_date) < getdate(so.transaction_date):
+				schedule.due_date = so.transaction_date
+
 	so.insert(ignore_permissions=True)
 
 	# Determine next status: if there are stock parts, move to Awaiting Parts, otherwise In Progress
@@ -682,6 +691,14 @@ def create_sales_invoice(service_request):
 
 	if hasattr(si, "service_request"):
 		si.service_request = req.name
+
+	if not getattr(si, "posting_date", None):
+		si.posting_date = nowdate()
+
+	if getattr(si, "payment_schedule", None):
+		for schedule in si.payment_schedule:
+			if schedule.due_date and getdate(schedule.due_date) < getdate(si.posting_date):
+				schedule.due_date = si.posting_date
 
 	si.run_method("calculate_taxes_and_totals")
 	si.insert(ignore_permissions=True)
