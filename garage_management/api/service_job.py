@@ -56,12 +56,32 @@ def create_quotation(service_job):
 	if hasattr(quotation, "service_job"):
 		quotation.service_job = job.name
 
-	for row in job.billing_items:
+	for row in job.billing_items or []:
 		quotation.append("items", _item_row_from_billing(row))
+
+	if not job.billing_items:
+		quotation.flags.ignore_mandatory = True
+		quotation.net_total = 0.0
+		quotation.total = 0.0
+		quotation.grand_total = 0.0
+		quotation.base_grand_total = 0.0
+		quotation.rounded_total = 0.0
 
 	quotation.run_method("set_missing_values")
 	quotation.set_taxes()
 	quotation.run_method("calculate_taxes_and_totals")
+
+	if not job.billing_items:
+		if quotation.grand_total is None:
+			quotation.grand_total = 0.0
+		if quotation.base_grand_total is None:
+			quotation.base_grand_total = 0.0
+		if quotation.net_total is None:
+			quotation.net_total = 0.0
+		if quotation.total is None:
+			quotation.total = 0.0
+		if quotation.rounded_total is None:
+			quotation.rounded_total = 0.0
 
 	quotation.insert(ignore_permissions=True)
 

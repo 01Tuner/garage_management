@@ -204,9 +204,6 @@ def create_quotation(service_request):
 		sync_inspection_items_to_billing(service_request)
 		req.reload()
 
-	if not req.billing_items:
-		frappe.throw(_("Add Billing Items on the Service Request before creating Quotation"))
-
 	settings = _settings()
 	quotation = frappe.new_doc("Quotation")
 	quotation.quotation_to = "Customer"
@@ -225,12 +222,32 @@ def create_quotation(service_request):
 	if hasattr(quotation, "service_request"):
 		quotation.service_request = req.name
 
-	for row in req.billing_items:
+	for row in req.billing_items or []:
 		quotation.append("items", _item_row_from_billing(row))
+
+	if not req.billing_items:
+		quotation.flags.ignore_mandatory = True
+		quotation.net_total = 0.0
+		quotation.total = 0.0
+		quotation.grand_total = 0.0
+		quotation.base_grand_total = 0.0
+		quotation.rounded_total = 0.0
 
 	quotation.run_method("set_missing_values")
 	quotation.set_taxes()
 	quotation.run_method("calculate_taxes_and_totals")
+
+	if not req.billing_items:
+		if quotation.grand_total is None:
+			quotation.grand_total = 0.0
+		if quotation.base_grand_total is None:
+			quotation.base_grand_total = 0.0
+		if quotation.net_total is None:
+			quotation.net_total = 0.0
+		if quotation.total is None:
+			quotation.total = 0.0
+		if quotation.rounded_total is None:
+			quotation.rounded_total = 0.0
 
 	# Create as Draft (docstatus = 0) so user can review and edit
 	quotation.insert(ignore_permissions=True)
